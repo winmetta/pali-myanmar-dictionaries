@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pāḷi–Myanmar Dictionary JSONL Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "entry_type",
+    "headword",
+    "headword_norm",
+    "quality",
+    "license_id",
+    "content_hash"
+  ],
+  "properties": {
+    "source_id": { "type": "string", "minLength": 1 },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "pali_term",
+        "pali_root",
+        "topic",
+        "story",
+        "index_ref",
+        "myanmar_term"
+      ]
+    },
+    "headword": { "type": "string", "minLength": 1 },
+    "headword_norm": { "type": "string", "minLength": 1 },
+    "headword_iast": { "type": ["string", "null"] },
+    "homonym_no": { "type": ["integer", "null"], "minimum": 1 },
+    "pos": { "type": ["string", "null"] },
+    "etymology": { "type": ["string", "null"] },
+    "root_pali": { "type": ["string", "null"] },
+    "definition_text": { "type": ["string", "null"] },
+    "senses": {
+      "type": ["array", "null"],
+      "items": { "type": "object" }
+    },
+    "english_gloss": { "type": ["string", "null"] },
+    "volume_code": { "type": ["string", "null"] },
+    "printed_page": { "type": ["integer", "null"], "minimum": 1 },
+    "printed_page_end": { "type": ["integer", "null"], "minimum": 1 },
+    "pdf_page": { "type": ["integer", "null"], "minimum": 1 },
+    "citations": {
+      "type": ["array", "null"],
+      "items": { "type": "string" }
+    },
+    "extra": { "type": ["object", "null"] },
+    "quality": { "type": "string", "enum": ["proofed", "ocr"] },
+    "license_id": { "type": "string", "minLength": 1 },
+    "content_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

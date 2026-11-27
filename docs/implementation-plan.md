@@ -146,7 +146,7 @@ CREATE VIRTUAL TABLE entries_fts USING fts5(
   definition_text,
   content='entries',
   content_rowid='id',
-  tokenize='unicode61 remove_diacritics 0'
+  tokenize='unicode61 remove_diacritics 0 categories ''L* N* Co M*'''
 );
 ```
 
@@ -158,7 +158,7 @@ Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted d
 
 ## 4. Text Normalization & Transliteration Rules
 
-1. **Zawgyi Detection & Conversion:** convert known Zawgyi columns (`vatthuguide.content`, `pitakaguide.tags`/`ranges`, `pm3` hyphenated headwords) and run a post-conversion detector check asserting `0` remaining Zawgyi code-point patterns (`U+1060`–`U+1097`, leading `U+1031`, malformed kinzi).
+1. **Zawgyi Detection & Conversion:** convert known Zawgyi columns (`vatthuguide.content`, `pitakaguide.tags`/`ranges`, `pm3` hyphenated headwords) by invoking [`winmetta-platform/packages/myanmar-convert/src/index.ts`](https://github.com/winmetta/winmetta-platform/blob/main/packages/myanmar-convert/src/index.ts) (`convert` and `detect` via Node 24 batch worker over JSONL stdin/stdout), and run a post-conversion detector check asserting `0` remaining Zawgyi code-point patterns (`U+1060`–`U+1097`, leading `U+1031`, malformed kinzi).
 2. **Sinhala → Myanmar Pāḷi Transliteration (`my-android.db`):**
    - Map Sinhala Pāḷi vowels, consonants, virama (`්` `U+0DCA` → `္` `U+1039`), and anusvara (`ං` `U+0D82` → `ံ` `U+1036`, or kinzi `င်္` before velars `က/ခ/ဂ/ဃ/င` where standard Myanmar Pāḷi orthography writes kinzi, e.g., `අංකුර` → `အင်္ကုရ`, verified against `freococo/pali-words-myanmar-script.jsonl` and `abidan_new.db`).
    - Apply tall `ါ` (`U+102B`) vs. standard `ာ` (`U+102C`) contextually per `burmese-pali-orthography` rules (`ါ` after unclustered `ခ, ဂ, င, ဒ, ပ, ဝ`, except where subscripted/medialed).

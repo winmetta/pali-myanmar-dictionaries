@@ -270,6 +270,10 @@ class Stage1ParserTests(unittest.TestCase):
         self.assertEqual(uhs_v.etymology, "ဝိ+အာ√ကရ်")
         self.assertEqual(uhs_v.root_pali, "√ကရ်")
 
+        uhs_multi = '<p class="word">စရာပေတိ</p>\n<p>(ကာ) (√စရ်+ဏာပေ)</p>\n<p>ကျင့်စေ၏။</p>'
+        uhs_m = parse_u_hoke_sein_html("စရာပေတိ", uhs_multi)
+        self.assertEqual((uhs_m.pos, uhs_m.etymology, uhs_m.root_pali), ("ကာ", "√စရ်+ဏာပေ", "√စရ်"))
+
         b3_html = (
             '<p class="word">၀၀ကဋ္ဌ <span class="gender">၊ ပု ၊</span> [ဝိ+အဝ√ကသ+တ]</p>\n'
             "<p>ကင်းဆိတ်ရာ။</p>"
@@ -293,6 +297,12 @@ class Stage1ParserTests(unittest.TestCase):
         self.assertEqual(
             (b3_unbal.headword, b3_unbal.pos, b3_unbal.root_pali), ("အတိဗန္ဓိတွာ", "ဗျ", "√ဗန္ဓ")
         )
+
+        b3_post = parse_dhatuattha_html(
+            "မစ္ဆရာယတိ",
+            '<p class="word">မစ္ဆရာယတိ [မစ္ဆရ+အာယ = မစ္ဆရာယ+တိ] နာမ ဓာတု။</p><p>ဝန်တို၏။</p>',
+        )
+        self.assertEqual((b3_post.headword, b3_post.pos), ("မစ္ဆရာယတိ", "နာမဓာတု"))
 
         b4_html = '<p class="definition">စကိ၊ စင်္က ဘူ = သဉ္စလေ-တုန်လှုပ်ခြင်း၌။ စင်္ကတိ။</p>'
         b4 = parse_pali_dhatu_html("စကိ", b4_html)

@@ -35,8 +35,10 @@ TRAILING_NUM_RE = re.compile(r"^(.*?)\s*[-(]?\s*([၀-၉0-9]+)\s*\)?$")
 BRACKET_WRAP_RE = re.compile(r"^(?:\[(.*)\]|\((.*)\))$", re.DOTALL)
 PAREN_POS_RE = re.compile(r"^\(([^()]{1,25})\)$")
 UHS_ETYM_LINE_RE = re.compile(r"^(?:\[.+\]|\([^()]*[+√][^()]*\))$", re.DOTALL)
+UHS_MULTI_PAREN_RE = re.compile(r"^(?:\([^()]+\)\s*)+$", re.DOTALL)
+PAREN_GROUP_RE = re.compile(r"\(([^()]+)\)")
 BOOK3_UNBALANCED_ETYM_RE = re.compile(r"(?:^|[၊။\s])([^၊။\[\]]*[√+][^၊။\[\]]*)\]\s*$")
-_BOOK3_POS_ATOM = r"(?:ပု|ထီ|န|တိ|ဗျ|အ|ကြိဝိ|ကြိ|ဝိ|နာမဓာတု|နာမဓာတ်|ကာ)"
+_BOOK3_POS_ATOM = r"(?:ပု|ထီ|န|တိ|ဗျ|အ|ကြိဝိ|ကြိ|ဝိ|နာမ\s*ဓာတု|နာမ\s*ဓာတ်|ကာ)"
 BOOK3_POS_RE = re.compile(rf"^{_BOOK3_POS_ATOM}(?:\s*\+\s*{_BOOK3_POS_ATOM})*$")
 ROOT_EXTRACT_RE = re.compile(r"√\s*([^\s+\]\),၊။]+)")
 STUB_DEFINITION_RE = re.compile(r"^(?:မူရင်း[^\n။]*၌\s*ကြည့်ပါ|ဖတ်မရပါ)။?$")
@@ -246,6 +248,23 @@ class ParsedUHokeSein:
     see_also: list[str] = field(default_factory=list)
 
 
+def _consume_uhs_meta_line(
+    line: str, pos: str | None, etymology: str | None
+) -> tuple[bool, str | None, str | None]:
+    if etymology is None and UHS_ETYM_LINE_RE.match(line):
+        return True, pos, _clean_etymology(line)
+    if etymology is None and UHS_MULTI_PAREN_RE.match(line) and ("+" in line or "√" in line):
+        groups = [g.strip() for g in PAREN_GROUP_RE.findall(line) if g.strip()]
+        if groups:
+            if pos is None and "+" not in groups[0] and "√" not in groups[0] and len(groups) >= 2:
+                pos = groups[0]
+                groups = groups[1:]
+            return True, pos, " ; ".join(groups) or None
+    if pos is None and PAREN_POS_RE.match(line) and MYANMAR_CHAR_RE.search(line):
+        return True, _clean_pos(line), etymology
+    return False, pos, etymology
+
+
 def parse_u_hoke_sein_html(lookup_word: str, raw_html: str) -> ParsedUHokeSein:
     """Parse U Hoke Sein (`book=2`), cleanly separating English/botanical glosses from Burmese."""
     headword, homonym_no, header_pos = _parse_word_header(lookup_word, raw_html)
@@ -258,17 +277,13 @@ def parse_u_hoke_sein_html(lookup_word: str, raw_html: str) -> ParsedUHokeSein:
     english_lines: list[str] = []
 
     for m in P_BLOCK_RE.finditer(raw_html):
-        full_tag = m.group(0)
-        if 'class="word"' in full_tag:
+        if 'class="word"' in m.group(0):
             continue
         line = _clean_html_fragment(m.group(1))
         if not line:
             continue
-        if etymology is None and UHS_ETYM_LINE_RE.match(line):
-            etymology = _clean_etymology(line)
-            continue
-        if pos is None and PAREN_POS_RE.match(line) and MYANMAR_CHAR_RE.search(line):
-            pos = _clean_pos(line)
+        consumed, pos, etymology = _consume_uhs_meta_line(line, pos, etymology)
+        if consumed:
             continue
         if LATIN_DOMINANT_RE.match(line) and not MYANMAR_CHAR_RE.search(line):
             english_lines.append(line)
@@ -309,7 +324,7 @@ def _parse_dhatuattha_header(lookup_word: str, raw_html: str) -> tuple[str, str 
     etymologies = [
         m.group(1).strip() for m in re.finditer(r"\[([^\[\]]+)\]", hdr) if m.group(1).strip()
     ]
-    hdr = re.sub(r"\[[^\[\]]*\]", " ", hdr)
+    hdr = re.sub(r"\[[^\[\]]*\]", "၊", hdr)
     unbal = BOOK3_UNBALANCED_ETYM_RE.search(hdr)
     if unbal:
         etymologies.append(unbal.group(1).strip())
@@ -317,13 +332,13 @@ def _parse_dhatuattha_header(lookup_word: str, raw_html: str) -> tuple[str, str 
 
     headword: str | None = None
     pos: str | None = None
-    for raw_tok in re.split(r"[၊။]", hdr):
-        tok = raw_tok.strip(" +")
+    for raw_tok in re.split(r"[၊။,=]", hdr):
+        tok = re.sub(r"\([^()]*\)", "", raw_tok).strip(" +")
         if not tok:
             continue
         if BOOK3_POS_RE.match(tok):
             if pos is None:
-                pos = re.sub(r"\s*\+\s*", "+", tok)
+                pos = re.sub(r"\s+", "", re.sub(r"\s*\+\s*", "+", tok))
         elif headword is None:
             cand = _repair_headword_zero_as_wa(tok)
             num_m = TRAILING_NUM_RE.match(cand)

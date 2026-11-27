@@ -11,6 +11,7 @@ from pathlib import Path
 
 from pali_myanmar_dicts.cache_verify import DEFAULT_MANIFEST_PATH, verify_cache
 from pali_myanmar_dicts.schema import (
+    ALLOWED_JSONL_FIELDS,
     REPO_ROOT,
     compute_content_hash,
     init_sqlite_db,
@@ -19,7 +20,7 @@ from pali_myanmar_dicts.schema import (
 
 
 class Stage0SchemaTests(unittest.TestCase):
-    def test_sqlite_schema_and_fts_triggers(self) -> None:
+    def test_sqlite_schema_fts_myanmar_categories_and_triggers(self) -> None:
         conn = init_sqlite_db(":memory:", include_master_tables=True)
         conn.execute(
             """
@@ -43,7 +44,15 @@ class Stage0SchemaTests(unittest.TestCase):
             "INSERT INTO source_volumes (source_id, volume_code, volume_number) VALUES (?, ?, ?)",
             ("u-hoke-sein", "01", 1),
         )
-        chash = compute_content_hash("u-hoke-sein", "စက္က", "ဘီး။ လှည်းဘီး။", extra_parts=("န",))
+
+        rec_metta = {
+            "source_id": "u-hoke-sein",
+            "headword": "မေတ္တာ",
+            "pos": "ထီ",
+            "definition_text": "ဘီး။ လှည်းဘီး။",
+            "volume_code": "01",
+        }
+        chash_metta = compute_content_hash(rec_metta)
         conn.execute(
             """
             INSERT INTO entries (
@@ -54,19 +63,55 @@ class Stage0SchemaTests(unittest.TestCase):
             (
                 "u-hoke-sein",
                 "pali_term",
-                "စက္က",
-                "စကက",
-                "cakka",
-                "န",
+                "မေတ္တာ",
+                "မေတတာ",
+                "mettā",
+                "ထီ",
                 "ဘီး။ လှည်းဘီး။",
                 "01",
                 "proofed",
                 "winmetta-pd-decision",
-                chash,
+                chash_metta,
             ),
         )
 
-        # Duplicate within same source_id must be rejected by UNIQUE(source_id, content_hash)
+        rec_mitta = {
+            "source_id": "u-hoke-sein",
+            "headword": "မိတ္တ",
+            "pos": "ပု",
+            "definition_text": "အဆွေခင်ပွန်း။",
+            "volume_code": "01",
+        }
+        conn.execute(
+            """
+            INSERT INTO entries (
+              source_id, entry_type, headword, headword_norm, headword_iast,
+              pos, definition_text, volume_code, quality, license_id, content_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "u-hoke-sein",
+                "pali_term",
+                "မိတ္တ",
+                "မိတတ",
+                "mitta",
+                "ပု",
+                "အဆွေခင်ပွန်း။",
+                "01",
+                "proofed",
+                "winmetta-pd-decision",
+                compute_content_hash(rec_mitta),
+            ),
+        )
+
+        # Combining marks M* are kept inside Myanmar tokens: မေတ္တာ must not match မိတ္တ
+        metta_hits = conn.execute(
+            "SELECT headword FROM entries WHERE id IN "
+            "(SELECT rowid FROM entries_fts WHERE entries_fts MATCH 'မေတ္တာ')"
+        ).fetchall()
+        self.assertEqual(metta_hits, [("မေတ္တာ",)])
+
+        # Duplicate within same source_id rejected by UNIQUE(source_id, content_hash)
         with self.assertRaises(sqlite3.IntegrityError):
             conn.execute(
                 """
@@ -78,63 +123,89 @@ class Stage0SchemaTests(unittest.TestCase):
                 (
                     "u-hoke-sein",
                     "pali_term",
-                    "စက္က",
-                    "စကက",
+                    "မေတ္တာ",
+                    "မေတတာ",
                     "ဘီး။ လှည်းဘီး။",
                     "proofed",
                     "winmetta-pd-decision",
-                    chash,
+                    chash_metta,
                 ),
             )
 
-        # FTS5 insert, update, and delete triggers keep entries_fts synchronized
-        fts_hits = conn.execute(
-            "SELECT rowid FROM entries_fts WHERE entries_fts MATCH 'cakka'"
-        ).fetchall()
-        self.assertEqual(len(fts_hits), 1)
-
+        # FTS5 update and delete triggers keep entries_fts synchronized
         conn.execute("UPDATE entries SET definition_text = ? WHERE id = 1", ("ရထားဘီး။",))
         updated_hits = conn.execute(
             "SELECT rowid FROM entries_fts WHERE entries_fts MATCH 'ရထားဘီး'"
         ).fetchall()
         self.assertEqual(len(updated_hits), 1)
 
-        conn.execute("DELETE FROM entries WHERE id = 1")
+        conn.execute("DELETE FROM entries")
         after_del = conn.execute("SELECT COUNT(*) FROM entries_fts").fetchone()[0]
         self.assertEqual(after_del, 0)
         conn.close()
 
+    def test_pali_lemmatizer_unique_coalesces_nulls(self) -> None:
+        conn = init_sqlite_db(":memory:", include_master_tables=True)
+        sql = (
+            "INSERT INTO pali_lemmatizer "
+            "(inflected_my, inflected_norm, lemma_my, breakup_my, source_tag) "
+            "VALUES (?, ?, ?, ?, ?)"
+        )
+        conn.execute(sql, ("ဓမ္မဿ", "ဓမမဿ", "ဓမ္မ", None, "dpr_stem"))
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute(sql, ("ဓမ္မဿ", "ဓမမဿ", "ဓမ္မ", None, "dpr_stem"))
+        conn.close()
+
+    def test_compute_content_hash_uses_canonical_8_tuple(self) -> None:
+        rec_p1 = {
+            "source_id": "pitaka-lamnyun",
+            "headword": "ကကစူပမသုတ်",
+            "volume_code": "1",
+            "printed_page": 300,
+        }
+        rec_p2 = {
+            "source_id": "pitaka-lamnyun",
+            "headword": "ကကစူပမသုတ်",
+            "volume_code": "3",
+            "printed_page": 485,
+        }
+        self.assertNotEqual(compute_content_hash(rec_p1), compute_content_hash(rec_p2))
+
     def test_validate_jsonl_record(self) -> None:
-        chash = compute_content_hash("pali-dhatu-abhidhana", "စက", "ရောင့်ရဲခြင်း")
-        valid = {
+        base = {
             "source_id": "pali-dhatu-abhidhana",
             "entry_type": "pali_root",
             "headword": "စက",
             "headword_norm": "စက",
             "headword_iast": "caka",
             "definition_text": "ရောင့်ရဲခြင်း",
+            "senses": [{"num": "၁", "text": "ရောင့်ရဲခြင်း"}],
             "citations": ["ဝါစပ္ပတိ"],
             "extra": {"gana_classes": ["ဘူ"]},
             "quality": "proofed",
             "license_id": "winmetta-pd-decision",
-            "content_hash": chash,
         }
+        valid = {**base, "content_hash": compute_content_hash(base)}
         validate_jsonl_record(valid)
 
-        with self.assertRaises(ValueError):
-            validate_jsonl_record({**valid, "unknown_col": 1})
-        with self.assertRaises(ValueError):
-            validate_jsonl_record({**valid, "entry_type": "bad_kind"})
-        with self.assertRaises(ValueError):
-            validate_jsonl_record({**valid, "printed_page": 0})
-        with self.assertRaises(ValueError):
-            validate_jsonl_record({**valid, "content_hash": "not-a-sha256"})
+        invalid_cases = [
+            {**valid, "unknown_col": 1},
+            {**valid, "entry_type": "bad_kind"},
+            {**valid, "printed_page": 0},
+            {**valid, "volume_code": 1},
+            {**valid, "senses": ["not-an-object"]},
+            {**valid, "citations": [123]},
+            {**valid, "content_hash": ("a" * 64) + "\n"},
+        ]
+        for bad in invalid_cases:
+            with self.assertRaises(ValueError):
+                validate_jsonl_record(bad)
 
     def test_entry_json_schema_matches_validator(self) -> None:
         schema_file = REPO_ROOT / "schemas" / "entry.schema.json"
         schema = json.loads(schema_file.read_text(encoding="utf-8"))
         self.assertEqual(schema["type"], "object")
-        self.assertIn("headword", schema["required"])
+        self.assertEqual(set(schema["properties"]), ALLOWED_JSONL_FIELDS)
 
 
 class Stage0CacheVerifyTests(unittest.TestCase):
@@ -169,23 +240,19 @@ class Stage0CacheVerifyTests(unittest.TestCase):
             }
             manifest_path.write_text(json.dumps(manifest_data), encoding="utf-8")
 
-            ok_res = verify_cache(cache_dir, manifest_path)
-            self.assertTrue(ok_res.ok)
+            self.assertTrue(verify_cache(cache_dir, manifest_path).ok)
 
-            # Corrupt 1 byte with identical length -> SHA-256 mismatch
             sample_file.write_bytes(b"Xample dictionary bytes")
             self.assertTrue(verify_cache(cache_dir, manifest_path, quick=True).ok)
             bad_sha = verify_cache(cache_dir, manifest_path, quick=False)
             self.assertFalse(bad_sha.ok)
             self.assertTrue(bad_sha.errors[0].startswith("SHA256 MISMATCH:"))
 
-            # Truncate -> size mismatch
             sample_file.write_bytes(b"short")
             bad_size = verify_cache(cache_dir, manifest_path)
             self.assertFalse(bad_size.ok)
             self.assertTrue(bad_size.errors[0].startswith("SIZE MISMATCH:"))
 
-            # Delete -> missing
             sample_file.unlink()
             missing = verify_cache(cache_dir, manifest_path)
             self.assertFalse(missing.ok)

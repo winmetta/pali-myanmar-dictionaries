@@ -8,9 +8,11 @@ CREATE TABLE IF NOT EXISTS pali_lemmatizer (
   inflected_iast TEXT,
   lemma_my       TEXT,
   breakup_my     TEXT,
-  source_tag     TEXT NOT NULL,
-  UNIQUE (inflected_my, lemma_my, breakup_my, source_tag)
+  source_tag     TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lemmatizer_unique
+  ON pali_lemmatizer(inflected_my, COALESCE(lemma_my, ''), COALESCE(breakup_my, ''), source_tag);
 
 CREATE INDEX IF NOT EXISTS idx_lemmatizer_inflected_my   ON pali_lemmatizer(inflected_my);
 CREATE INDEX IF NOT EXISTS idx_lemmatizer_inflected_norm ON pali_lemmatizer(inflected_norm);

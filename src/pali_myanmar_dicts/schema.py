@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import sqlite3
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +18,8 @@ VALID_ENTRY_TYPES = frozenset(
     {"pali_term", "pali_root", "topic", "story", "index_ref", "myanmar_term"}
 )
 VALID_QUALITIES = frozenset({"proofed", "ocr"})
-HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+HEX64_RE = re.compile(r"[0-9a-f]{64}")
+
 REQUIRED_JSONL_FIELDS = (
     "source_id",
     "entry_type",
@@ -26,24 +29,31 @@ REQUIRED_JSONL_FIELDS = (
     "license_id",
     "content_hash",
 )
+OPTIONAL_STR_FIELDS = (
+    "headword_iast",
+    "pos",
+    "etymology",
+    "root_pali",
+    "definition_text",
+    "english_gloss",
+    "volume_code",
+)
+OPTIONAL_INT_FIELDS = ("homonym_no", "printed_page", "printed_page_end", "pdf_page")
 ALLOWED_JSONL_FIELDS = frozenset(
     REQUIRED_JSONL_FIELDS
-    + (
-        "headword_iast",
-        "homonym_no",
-        "pos",
-        "etymology",
-        "root_pali",
-        "definition_text",
-        "senses",
-        "english_gloss",
-        "volume_code",
-        "printed_page",
-        "printed_page_end",
-        "pdf_page",
-        "citations",
-        "extra",
-    )
+    + OPTIONAL_STR_FIELDS
+    + OPTIONAL_INT_FIELDS
+    + ("senses", "citations", "extra")
+)
+HASH_KEY_FIELDS = (
+    "source_id",
+    "headword",
+    "homonym_no",
+    "pos",
+    "etymology",
+    "definition_text",
+    "volume_code",
+    "printed_page",
 )
 
 
@@ -60,33 +70,45 @@ def init_sqlite_db(
 
 
 def compute_content_hash(
-    source_id: str,
-    headword: str,
-    definition_text: str | None,
+    entry: Mapping[str, Any],
     *,
     extra_parts: tuple[str | int | None, ...] = (),
 ) -> str:
-    """Compute a deterministic SHA-256 content hash for within-source deduplication."""
-    parts = [source_id, headword, definition_text or ""]
-    parts.extend("" if p is None else str(p) for p in extra_parts)
-    payload = "\x1f".join(parts).encode("utf-8")
+    """Compute a deterministic SHA-256 over the canonical 8-field tuple plus optional extras."""
+    canonical = [entry.get(key) for key in HASH_KEY_FIELDS]
+    if extra_parts:
+        canonical.extend(extra_parts)
+    payload = json.dumps(canonical, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
-def _check_optional_types(record: dict[str, Any]) -> None:
-    for int_field in ("homonym_no", "printed_page", "printed_page_end", "pdf_page"):
+def _check_optional_scalars(record: Mapping[str, Any]) -> None:
+    for str_field in OPTIONAL_STR_FIELDS:
+        val = record.get(str_field)
+        if val is not None and not isinstance(val, str):
+            raise ValueError(f"{str_field} must be a string or None")
+    for int_field in OPTIONAL_INT_FIELDS:
         val = record.get(int_field)
         if val is not None and (isinstance(val, bool) or not isinstance(val, int) or val < 1):
             raise ValueError(f"{int_field} must be a positive integer or None")
-    if record.get("senses") is not None and not isinstance(record["senses"], list):
-        raise ValueError("senses must be a list or None")
-    if record.get("citations") is not None and not isinstance(record["citations"], list):
-        raise ValueError("citations must be a list or None")
+
+
+def _check_optional_containers(record: Mapping[str, Any]) -> None:
+    senses = record.get("senses")
+    if senses is not None and (
+        not isinstance(senses, list) or not all(isinstance(item, dict) for item in senses)
+    ):
+        raise ValueError("senses must be a list of objects or None")
+    citations = record.get("citations")
+    if citations is not None and (
+        not isinstance(citations, list) or not all(isinstance(item, str) for item in citations)
+    ):
+        raise ValueError("citations must be a list of strings or None")
     if record.get("extra") is not None and not isinstance(record["extra"], dict):
         raise ValueError("extra must be a dict or None")
 
 
-def validate_jsonl_record(record: dict[str, Any]) -> None:
+def validate_jsonl_record(record: Mapping[str, Any]) -> None:
     """Validate a dictionary JSONL record against `schemas/entry.schema.json` invariants."""
     unknown = set(record) - ALLOWED_JSONL_FIELDS
     if unknown:
@@ -99,6 +121,7 @@ def validate_jsonl_record(record: dict[str, Any]) -> None:
         raise ValueError(f"Invalid entry_type: {record['entry_type']}")
     if record["quality"] not in VALID_QUALITIES:
         raise ValueError(f"Invalid quality: {record['quality']}")
-    if not HEX64_RE.match(record["content_hash"]):
+    if not HEX64_RE.fullmatch(record["content_hash"]):
         raise ValueError(f"Invalid SHA-256 content_hash: {record['content_hash']}")
-    _check_optional_types(record)
+    _check_optional_scalars(record)
+    _check_optional_containers(record)

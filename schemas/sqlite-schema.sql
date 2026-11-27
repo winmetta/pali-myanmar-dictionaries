@@ -71,7 +71,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
   definition_text,
   content='entries',
   content_rowid='id',
-  tokenize='unicode61 remove_diacritics 0'
+  tokenize='unicode61 remove_diacritics 0 categories ''L* N* Co M*'''
 );
 
 CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN

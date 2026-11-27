@@ -1,0 +1,33 @@
+# Raw downloaded upstream sources and work scratch (never commit)
+.cache/
+
+# Compiled database and JSONL build outputs (published via release assets, not plain git)
+dist/
+build/
+*.db
+*.sqlite
+*.sqlite3
+*.db.zst
+*.db.gz
+*.db.xz
+*.db.zip
+*.jsonl.zst
+
+# Environment & secrets
+.env*
+!.env.example
+
+# Python / Node tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+node_modules/
+
+# OS & editor files
+.DS_Store
+*.log
+*.part
+*.tmp

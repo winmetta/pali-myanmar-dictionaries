@@ -28,6 +28,7 @@ from pali_myanmar_dicts.translit import (
     sinhala_to_myanmar,
 )
 from pali_myanmar_dicts.zawgyi import (
+    MyanmarConvertBridge,
     assert_zero_zawgyi,
     auto_zawgyi_to_unicode,
     detect_encoding,
@@ -81,6 +82,15 @@ class Stage1ZawgyiAndNormalizerTests(unittest.TestCase):
         batch = zawgyi_to_unicode_batch([zg_metta, "\u101e\u1001\u1064\u102b\u101b"])
         self.assertEqual(batch, ["မေတ္တာ", "သင်္ခါရ"])
 
+        bridge = MyanmarConvertBridge()
+        self.assertEqual(bridge.convert_batch([zg_metta]), ["မေတ္တာ"])
+        proc = bridge._proc
+        bridge.close()
+        self.assertIsNotNone(proc)
+        assert proc is not None and proc.stdout is not None and proc.stderr is not None
+        self.assertTrue(proc.stdout.closed)
+        self.assertTrue(proc.stderr.closed)
+
     def test_assert_zero_zawgyi_rejects_markers(self) -> None:
         with self.assertRaises(ValueError):
             assert_zero_zawgyi("\u1031မတ္တာ", context="leading-e")
@@ -96,6 +106,8 @@ class Stage1ZawgyiAndNormalizerTests(unittest.TestCase):
         self.assertEqual(canonicalize_myanmar_syllables("ပိနဲ္န"), "ပိန္နဲ")
         self.assertEqual(canonicalize_myanmar_syllables("မင်္ဂလာ"), "မင်္ဂလာ")
         self.assertEqual(canonicalize_myanmar_syllables("ပဥှာ"), "ပဉှာ")
+        self.assertEqual(canonicalize_myanmar_syllables("ဥာဏ်မျက်စိ"), "ဉာဏ်မျက်စိ")
+        self.assertEqual(canonicalize_myanmar_syllables("သံယောဇဥ်"), "သံယောဇဉ်")
 
         # Loose headword_norm folds tall ါ, kinzi, ဿ, medial ှ -> ဟ, stacked virama, and ဉီး -> ဦး
         self.assertEqual(to_headword_norm("ဓမ္မ"), to_headword_norm("ဓမမ"))
@@ -106,6 +118,10 @@ class Stage1ZawgyiAndNormalizerTests(unittest.TestCase):
         self.assertEqual(to_headword_norm("သဿတ"), to_headword_norm("သသသတ"))
         self.assertEqual(to_headword_norm("ဉပေက္ခာ"), to_headword_norm("ဥပေက္ခာ"))
         self.assertEqual(to_headword_norm("လက်ဉီး"), to_headword_norm("လက်ဦး"))
+        self.assertEqual(to_headword_norm("ဥာဏ"), to_headword_norm("ဉာဏ"))
+        self.assertEqual(myanmar_to_iast("ဥာဏ"), "ñāṇa")
+        self.assertEqual(to_headword_norm("ဉေယျ"), "ဉေယျ")
+        assert_zero_zawgyi(to_headword_norm("ဉေယျ"))
 
 
 class Stage1TransliterationTests(unittest.TestCase):
@@ -238,14 +254,21 @@ class Stage1ParserTests(unittest.TestCase):
 
     def test_parse_u_hoke_sein_dhatuattha_and_pali_dhatu_html(self) -> None:
         uhs_html = (
-            '<p class="word">စ</p>\n<p>(အ)</p>\n'
-            "<p>ပေါင်းစုခြင်းအနက်ကို ဟောသော နိပါတ်ပုဒ်။</p>\n"
-            "<p>(copulative or disjunctive particle.) and; then; now.</p>"
+            '<p class="word">ယုဝတီ</p>\n<p>(ဣ)</p>\n<p>(ယုဝ+တီ)</p>\n'
+            "<p>လုံမပျို။</p>\n"
+            "<p>(f.)– a young woman.</p>"
         )
-        uhs = parse_u_hoke_sein_html("စ", uhs_html)
-        self.assertEqual(uhs.pos, "အ")
-        self.assertEqual(uhs.definition_text, "ပေါင်းစုခြင်းအနက်ကို ဟောသော နိပါတ်ပုဒ်။")
-        self.assertEqual(uhs.english_gloss, "(copulative or disjunctive particle.) and; then; now.")
+        uhs = parse_u_hoke_sein_html("ယုဝတီ", uhs_html)
+        self.assertEqual(uhs.pos, "ဣ")
+        self.assertEqual(uhs.etymology, "ယုဝ+တီ")
+        self.assertEqual(uhs.definition_text, "လုံမပျို။")
+        self.assertEqual(uhs.english_gloss, "(f.)– a young woman.")
+
+        uhs_verb = '<p class="word">ဗျာကရောတိ</p>\n<p>(ဝိ+အာ√ကရ်)</p>\n<p>ဖြေကြား၏။</p>'
+        uhs_v = parse_u_hoke_sein_html("ဗျာကရောတိ", uhs_verb)
+        self.assertIsNone(uhs_v.pos)
+        self.assertEqual(uhs_v.etymology, "ဝိ+အာ√ကရ်")
+        self.assertEqual(uhs_v.root_pali, "√ကရ်")
 
         b3_html = (
             '<p class="word">၀၀ကဋ္ဌ <span class="gender">၊ ပု ၊</span> [ဝိ+အဝ√ကသ+တ]</p>\n'
@@ -256,6 +279,20 @@ class Stage1ParserTests(unittest.TestCase):
         self.assertEqual(b3.pos, "ပု")
         self.assertEqual(b3.root_pali, "√ကသ")
         self.assertEqual(b3.definition_text, "ကင်းဆိတ်ရာ။")
+
+        b3_var = parse_dhatuattha_html(
+            "စိတြ",
+            '<p class="word">စိတြ<span class="gender">၊ ဝိစိတြ ၊</span> တိ ၊ </p><p>ဆန်းကြယ်သော။</p>',
+        )
+        self.assertEqual((b3_var.headword, b3_var.pos), ("စိတြ", "တိ"))
+
+        b3_unbal = parse_dhatuattha_html(
+            "အတိဗန္ဓိတွာ",
+            '<p class="word">အတိဗန္ဓိတွာ ။ ဗျ ။ အတိ√ဗန္ဓ+တွာ]</p><p>ဖွဲ့၍။</p>',
+        )
+        self.assertEqual(
+            (b3_unbal.headword, b3_unbal.pos, b3_unbal.root_pali), ("အတိဗန္ဓိတွာ", "ဗျ", "√ဗန္ဓ")
+        )
 
         b4_html = '<p class="definition">စကိ၊ စင်္က ဘူ = သဉ္စလေ-တုန်လှုပ်ခြင်း၌။ စင်္ကတိ။</p>'
         b4 = parse_pali_dhatu_html("စကိ", b4_html)
@@ -279,11 +316,16 @@ class Stage1ParserTests(unittest.TestCase):
         self.assertEqual([s.tag for s in segs], ["မြ", "ချုပ်", ""])
         self.assertIn("[√ အံက+ဥရ]", segs[0].body)
 
-        # Trailing post-tag note without `+` stays classified as `စိန်` (zero `♦` leakage)
+        # Trailing post-tag note without `+` and repeated `+♦` / `♦...+++` stay clean
         with_note = split_my_android_segments("(ပ) လမင်း။♦စိန် ဥ")
         self.assertEqual(len(with_note), 1)
         self.assertEqual(with_note[0].tag, "စိန်")
         self.assertNotIn("♦", with_note[0].body)
+
+        multi_plus = split_my_android_segments("အဝတ်+♦မြ++ဘူ၊ တေဇနေ။♦စိန်+++")
+        self.assertEqual(
+            [(s.tag, s.body) for s in multi_plus], [("မြ", "အဝတ်"), ("စိန်", "ဘူ၊ တေဇနေ။")]
+        )
 
 
 if __name__ == "__main__":

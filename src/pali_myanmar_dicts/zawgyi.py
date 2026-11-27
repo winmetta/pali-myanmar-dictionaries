@@ -170,6 +170,10 @@ class MyanmarConvertBridge:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=3)
+        finally:
+            for stream in (proc.stdout, proc.stderr):
+                if stream is not None and not stream.closed:
+                    stream.close()
 
 
 _DEFAULT_BRIDGE: MyanmarConvertBridge | None = None

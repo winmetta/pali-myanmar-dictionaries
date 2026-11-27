@@ -46,16 +46,16 @@ _CLUSTER_OR_KINZI_RE = re.compile(
     r"|([\u1000-\u102A\u103F\u104E\u1050-\u1055](?:\u1039[\u1000-\u1021\u1050-\u1055])*)"
     r"([\u102B-\u1032\u1036-\u1038\u103A-\u103E]{2,})"
 )
-# Independent `ဥ` (`U+1025`) before medial `ှ` (`U+103E`) or virama `္` (`U+1039`) is a glyph
-# confusion for `ဉ` (`U+1009`), e.g. `ပဥှ` -> `ပဉှ`.
-_MISUSED_INDEP_U_RE = re.compile(r"\u1025(?=[\u1039\u103E])")
+# Independent `ဥ` (`U+1025`) before `ါ`/`ာ`, `ေ`, virama `္`, asat `်`, or medial `ှ` is a glyph
+# confusion for `ဉ` (`U+1009`), e.g. `ပဥှ` -> `ပဉှ`, `ဥာဏ်` -> `ဉာဏ်`, `သံယောဇဥ်` -> `သံယောဇဉ်`.
+_MISUSED_INDEP_U_RE = re.compile(r"\u1025(?=[\u102B\u102C\u1031\u1039\u103A\u103E]|\u1037\u103A)")
 
 # Loose headword normalization patterns:
 _NORM_STRIP_RE = re.compile(r"[\s\-–—_.,;:!?\"'“”‘’()\[\]{}၊။…/\\+=0-9၀-၉]+")
 _KINZI_VELAR_RE = re.compile(r"\u1004\u103A\u1039(?=[\u1000-\u1004])")
 # Syllable-initial `ဉ` (`U+1009`) confused for `ဥ`/`ဦ` (`ဉပေက္ခာ` -> `ဥပေက္ခာ`, `လက်ဉီး` -> `လက်ဦး`):
 _INITIAL_NYA_AS_U_RE = re.compile(
-    r"(?:(?<![\u1000-\u103F])\u1009(?![\u102B\u102C\u1039\u103E])|(?<!\u1039)\u1009(?=\u102E))"
+    r"(?:(?<![\u1000-\u103F])\u1009(?![\u102B-\u102D\u102F-\u103E])|(?<!\u1039)\u1009(?=\u102E))"
 )
 
 

@@ -32,11 +32,17 @@ TIPI_REF_RE = re.compile(
     r"တိပိ၊\s*([၀-၉0-9]+(?:\s*[က-ဃa-c+-]*)?)၊\s*([၀-၉0-9]+)(?:\s*[-–+]\s*([၀-၉0-9]+))?"
 )
 TRAILING_NUM_RE = re.compile(r"^(.*?)\s*[-(]?\s*([၀-၉0-9]+)\s*\)?$")
-BRACKET_WRAP_RE = re.compile(r"^\[(.*)\]$", re.DOTALL)
-PAREN_POS_RE = re.compile(r"^\(([^()]{1,20})\)$")
+BRACKET_WRAP_RE = re.compile(r"^(?:\[(.*)\]|\((.*)\))$", re.DOTALL)
+PAREN_POS_RE = re.compile(r"^\(([^()]{1,25})\)$")
+UHS_ETYM_LINE_RE = re.compile(r"^(?:\[.+\]|\([^()]*[+√][^()]*\))$", re.DOTALL)
+BOOK3_UNBALANCED_ETYM_RE = re.compile(r"(?:^|[၊။\s])([^၊။\[\]]*[√+][^၊။\[\]]*)\]\s*$")
+_BOOK3_POS_ATOM = r"(?:ပု|ထီ|န|တိ|ဗျ|အ|ကြိဝိ|ကြိ|ဝိ|နာမဓာတု|နာမဓာတ်|ကာ)"
+BOOK3_POS_RE = re.compile(rf"^{_BOOK3_POS_ATOM}(?:\s*\+\s*{_BOOK3_POS_ATOM})*$")
 ROOT_EXTRACT_RE = re.compile(r"√\s*([^\s+\]\),၊။]+)")
 STUB_DEFINITION_RE = re.compile(r"^(?:မူရင်း[^\n။]*၌\s*ကြည့်ပါ|ဖတ်မရပါ)။?$")
-LATIN_DOMINANT_RE = re.compile(r"^[\x00-\x7F\u0080-\u024F\u1E00-\u1EFF\s.,;:!?()\[\]'\"/-]+$")
+LATIN_DOMINANT_RE = re.compile(
+    r"^[\x00-\x7F\u0080-\u024F\u1E00-\u1EFF\u2010-\u2027\s.,;:!?()\[\]'\"/-]+$"
+)
 MYANMAR_CHAR_RE = re.compile(r"[\u1000-\u109F]")
 
 # Pāḷi Dhātu Abhidhāna (book=4) pattern: `<roots> <gaṇas> = <pali_sense>-<burmese_sense>။ <verbs>`
@@ -50,9 +56,9 @@ ZERO_AS_WA_RE = re.compile(r"\u1040+(?=[\u1000-\u103F])|(?<=[\u1000-\u103F])\u10
 # `my-android.db` segment boundary: `♦<tag>` / `%ဝိသုဒ္ဓါရုံ` plus inline post-tag note up to `+`.
 MY_ANDROID_TAG_RE = re.compile(
     r"(?:%♦(စိန်)|%(ဝိသုဒ္ဓါရုံ)|♦(ဝိသုဒ္ဓါရုံ|ချုပ်♦ချုပ်|မြ♦မြ|မြဗာရာဏသိသာမန္တ|ချုပ်|ချုပ|စိန်|မြျ|မြ|ဝိ|))"
-    r"([^\n+♦]*?)(?:\+|$)"
+    r"([^\n+♦]*?)(?:\++|$)"
 )
-UNTAGGED_DUP_SPLIT_RE = re.compile(r"(?<=။)\+(?=\s*(?:\[|\(|ပု|ထီ|န|တိ|အ|ဗျ))")
+UNTAGGED_DUP_SPLIT_RE = re.compile(r"(?<=။)\++(?=\s*(?:\[|\(|ပု|ထီ|န|တိ|အ|ဗျ))")
 
 
 def _clean_html_fragment(raw: str, *, single_line: bool = True) -> str:
@@ -76,7 +82,7 @@ def _clean_etymology(raw: str) -> str | None:
     cleaned = _clean_html_fragment(raw)
     m = BRACKET_WRAP_RE.match(cleaned)
     if m:
-        cleaned = m.group(1).strip()
+        cleaned = (m.group(1) if m.group(1) is not None else m.group(2)).strip()
     return cleaned or None
 
 
@@ -258,11 +264,11 @@ def parse_u_hoke_sein_html(lookup_word: str, raw_html: str) -> ParsedUHokeSein:
         line = _clean_html_fragment(m.group(1))
         if not line:
             continue
+        if etymology is None and UHS_ETYM_LINE_RE.match(line):
+            etymology = _clean_etymology(line)
+            continue
         if pos is None and PAREN_POS_RE.match(line) and MYANMAR_CHAR_RE.search(line):
             pos = _clean_pos(line)
-            continue
-        if etymology is None and line.startswith("[") and line.endswith("]"):
-            etymology = _clean_etymology(line)
             continue
         if LATIN_DOMINANT_RE.match(line) and not MYANMAR_CHAR_RE.search(line):
             english_lines.append(line)
@@ -292,23 +298,42 @@ class ParsedDhatuattha:
     definition_text: str
 
 
+def _parse_dhatuattha_header(lookup_word: str, raw_html: str) -> tuple[str, str | None, list[str]]:
+    fallback_hw = _repair_headword_zero_as_wa(
+        normalize_myanmar_text(lookup_word, single_line=True, check_zawgyi=False)
+    )
+    word_m = WORD_P_RE.search(raw_html)
+    if not word_m:
+        return fallback_hw, None, []
+    hdr = _clean_html_fragment(word_m.group(1))
+    etymologies = [
+        m.group(1).strip() for m in re.finditer(r"\[([^\[\]]+)\]", hdr) if m.group(1).strip()
+    ]
+    hdr = re.sub(r"\[[^\[\]]*\]", " ", hdr)
+    unbal = BOOK3_UNBALANCED_ETYM_RE.search(hdr)
+    if unbal:
+        etymologies.append(unbal.group(1).strip())
+        hdr = hdr[: unbal.start()]
+
+    headword: str | None = None
+    pos: str | None = None
+    for raw_tok in re.split(r"[၊။]", hdr):
+        tok = raw_tok.strip(" +")
+        if not tok:
+            continue
+        if BOOK3_POS_RE.match(tok):
+            if pos is None:
+                pos = re.sub(r"\s*\+\s*", "+", tok)
+        elif headword is None:
+            cand = _repair_headword_zero_as_wa(tok)
+            num_m = TRAILING_NUM_RE.match(cand)
+            headword = num_m.group(1).strip() if (num_m and num_m.group(1).strip()) else cand
+    return headword or fallback_hw, pos, etymologies
+
+
 def parse_dhatuattha_html(lookup_word: str, raw_html: str) -> ParsedDhatuattha:
     """Parse *Dhātvattha Pankone* (`book=3`) HTML row."""
-    headword, _, pos = _parse_word_header(lookup_word, raw_html)
-    etymologies: list[str] = []
-    # Some book=3 rows place `[...√...]` inline at the end of `<p class="word">`.
-    word_m = WORD_P_RE.search(raw_html)
-    if word_m:
-        inline_text = _clean_html_fragment(GENDER_SPAN_RE.sub("", word_m.group(1)))
-        br_m = re.search(r"\[([^\[\]]+)\]", inline_text)
-        if br_m:
-            cand_hw = _repair_headword_zero_as_wa(inline_text[: br_m.start()].strip())
-            num_m = TRAILING_NUM_RE.match(cand_hw)
-            if num_m and num_m.group(1).strip():
-                cand_hw = num_m.group(1).strip()
-            headword = cand_hw or headword
-            etymologies.append(br_m.group(1).strip())
-
+    headword, pos, etymologies = _parse_dhatuattha_header(lookup_word, raw_html)
     for rm in ROOT_P_RE.finditer(raw_html):
         et = _clean_etymology(rm.group(1))
         if et and et not in etymologies:
@@ -413,7 +438,7 @@ def _canonicalize_diamond_tag(raw_tag: str) -> str:
 
 
 def _split_untagged_duplicates(chunk: str) -> list[str]:
-    parts = [p.strip() for p in UNTAGGED_DUP_SPLIT_RE.split(chunk) if p.strip()]
+    parts = [p.strip(" \t\r\n+") for p in UNTAGGED_DUP_SPLIT_RE.split(chunk) if p.strip(" \t\r\n+")]
     unique: list[str] = []
     for p in parts:
         if p not in unique:
@@ -423,17 +448,17 @@ def _split_untagged_duplicates(chunk: str) -> list[str]:
 
 def split_my_android_segments(meaning: str) -> list[MyAndroidSegment]:
     """Split a `my-android.db` `meaning` string on `♦<tag>` boundaries without breaking `[a+b]`."""
-    if not meaning or not meaning.strip():
+    if not meaning or not meaning.strip(" \t\r\n+"):
         return []
     segments: list[MyAndroidSegment] = []
     pos = 0
     for match in MY_ANDROID_TAG_RE.finditer(meaning):
         tag_groups = match.groups()[:-1]
-        trailing_note = (match.groups()[-1] or "").strip()
+        trailing_note = (match.groups()[-1] or "").strip(" \t\r\n+")
         raw_tag = next((g for g in tag_groups if g is not None), "")
-        chunk = meaning[pos : match.start()].strip()
+        chunk = meaning[pos : match.start()].strip(" \t\r\n+")
         if trailing_note:
-            chunk = f"{chunk} {trailing_note}".strip()
+            chunk = f"{chunk} {trailing_note}".strip(" \t\r\n+")
         pos = match.end()
         if not chunk:
             continue
@@ -448,7 +473,7 @@ def split_my_android_segments(meaning: str) -> list[MyAndroidSegment]:
             )
         )
 
-    trailing = meaning[pos:].strip()
+    trailing = meaning[pos:].strip(" \t\r\n+")
     if trailing:
         for subpart in _split_untagged_duplicates(trailing):
             segments.append(MyAndroidSegment(tag="", raw_tag="", body=subpart))

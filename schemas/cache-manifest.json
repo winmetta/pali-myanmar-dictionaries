@@ -1,0 +1,318 @@
+{
+  "version": 1,
+  "generated_at": "2026-11-27",
+  "files": [
+    {
+      "path": "pndaza/tipitaka_pali.db",
+      "size": 581865472,
+      "sha256": "53cb85b48b7b3e12e9e1c2ab20f9b4642519d904a0f9cf7c59ee8090f491b9e2",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/abidan_new.db",
+      "size": 20221952,
+      "sha256": "29daa7659541096cda92697f7ffe81e659104ff34b253c530bbcdfbf4965422c",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/tupya.db",
+      "size": 3266560,
+      "sha256": "75cc3b661d290f58a104164841ab0bbd50cd793aa02fb11932081a24cae83ef9",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/sarupa.db",
+      "size": 7802880,
+      "sha256": "6e2e9925b1e3d2403cba902423808cd51f3e2cbde9971a63bf39edbf9fd308a7",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/vatthuguide.db",
+      "size": 4374528,
+      "sha256": "49a28dac610a4a1e87bab2dfef1ac488a6712e3cbe3bb5f63c848910cca884a9",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/pitakaguide.db",
+      "size": 2991104,
+      "sha256": "76ce56b1f59ffc0d7faf0b4ac633aa4ac9253dcae52acd330832cd0cfb537951",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/pitaka_guide_topic.csv",
+      "size": 1437393,
+      "sha256": "e038f36bc952af8e21a1af4dcd2653a7ec2a2f83e4b5f16dde3829f803132f40",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/pitaka_guide_category.csv",
+      "size": 348,
+      "sha256": "d10dd332daf2a4f61a0bcc9442c915e75a8bd28d81aed5eb4918ee12ac670501",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "pndaza/mep.db",
+      "size": 7569408,
+      "sha256": "4a61ee8655ecad0458f6dbc04c1cab4764b3340ad33184d9408ad5bb5016e75d",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "tipitaka-app/my-android.db",
+      "size": 36478976,
+      "sha256": "fa54ca1df6e374b3a2a187016e003d82a58f87e79fa0cf9119f90370929a7d28",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "tipitaka-app/my-u-hoke-sein.db",
+      "size": 10113024,
+      "sha256": "c3c1d1f244fcbc1d2e84bd0a9e418bbbdbff96c0bdb6a9554cf42efebcdbf59e",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "tipitaka-pali-projector/pm3_Pali_Myanmar_Dictionary_@U_Hau_Sein_2018.js",
+      "size": 7185535,
+      "sha256": "fa1a9c322a4bb42aee84564a2673079d65e66feda7458b796d29ae0cae5c20a4",
+      "license_id": "winmetta-pd-decision"
+    },
+    {
+      "path": "tipitaka-pali-reader/tipitaka_pali.db",
+      "size": 614060032,
+      "sha256": "3736e3c6df2c27ce31c008bb05fa04e7743ff58385cb0626bdbf28b651efb0e1",
+      "license_id": "mixed-upstream"
+    },
+    {
+      "path": "freococo/pali-words-myanmar-script.jsonl",
+      "size": 14738266,
+      "sha256": "e80909eb8f8c1322ea2efc7335dbb03d3e74644d6df372b87c58f7428a6eccf9",
+      "license_id": "CC0-1.0"
+    },
+    {
+      "path": "pndaza/palinlp2/fullGrammar5.xml",
+      "size": 211911,
+      "sha256": "7e9558857e4b325bf74921f45c8b6ef09b9874b027870c23785df5fab230b09c",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/indeclinables.xml",
+      "size": 2978,
+      "sha256": "0d47aa8e902e02026ed4fe98a9259f01171c317ee53609e573f890192c0dd5f8",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/irregularNoun.txt",
+      "size": 55228,
+      "sha256": "00e23f373999cdecbd3e2bc792b3bfb7a581ae825aafa076ff3ccf4a4917a779",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/irregularNumerals.txt",
+      "size": 12483,
+      "sha256": "5c13b60e581bd578d5184911df29c1bc3d3e990d6dce0dc962dac85b0da4d850",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/irregularVerbBases.txt",
+      "size": 311,
+      "sha256": "4e61b6dcc35da69e35402bd7a18f364a482357f84869bb687830ec994bdfbe38",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/sandhiMerge.in",
+      "size": 4359,
+      "sha256": "0ee5bfefd56002b59d21fbe8a7a8385b0480ea41c8e8d9207d55a9da6e96bcc6",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "pndaza/palinlp2/sandhiSplit.in",
+      "size": 12768,
+      "sha256": "f3f1ccd56571d380bff180043a1f5a2b5241ae442812bc4fa1382128001edc20",
+      "license_id": "LGPL-2.1"
+    },
+    {
+      "path": "bthar-mx/LICENSE",
+      "size": 1150,
+      "sha256": "0268bdd1dfb990b01f35a0ad960bedc8b70af682d7b48ebd2d50e07b497915eb",
+      "license_id": "MIT"
+    },
+    {
+      "path": "bthar-mx/LICENSE-DATA.md",
+      "size": 851,
+      "sha256": "c1accf6b82380d95c556e55b4e832728e98f477b774d05fe35f521bd8a75fffd",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/01/articles.jsonl",
+      "size": 15287638,
+      "sha256": "b9596f3a9da1c36c2a9f25ef1379ad13f058e4274c0aabc10578766a1ba4b956",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/02/articles.jsonl",
+      "size": 15793541,
+      "sha256": "f3c68b36153663cf284f2774a80a391ec5f75a331295ca1d1c34e2b702703d82",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/03/articles.jsonl",
+      "size": 22082738,
+      "sha256": "174f61157ab79f86c89e101a8465873577d72b3c898de0dc00f55ebaea410940",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/4a/articles.jsonl",
+      "size": 15339428,
+      "sha256": "80f7cb8632b20b3a12ff7e3ae0020d662aaa575fb6ab1d4578558a78e3be0ab5",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/4b/articles.jsonl",
+      "size": 12124013,
+      "sha256": "9b77ce49836f427156e46e654954a1fbed70b78d6fb2d10472a28844d775053a",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/4c/articles.jsonl",
+      "size": 9652633,
+      "sha256": "47063fb9a448bc3ea342c92802c3618e54c4ba874f8204b83e19782f5154adfe",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/05/articles.jsonl",
+      "size": 15581289,
+      "sha256": "453ad2cf80b6f2027d6eb7789a8b641be6b0d5a1ad19d2a0a1b7812478cfa2b3",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/06/articles.jsonl",
+      "size": 19608637,
+      "sha256": "94e91a5b38357fe5c679311d691d0a9939ac8b9950355cea2df465686b63701b",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/07/articles.jsonl",
+      "size": 15063582,
+      "sha256": "f7c288df2b1c4588aea7c84f1d9395aadf6abe2d081ac456fe7a257e09de0277",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/08/articles.jsonl",
+      "size": 15002127,
+      "sha256": "9a39eab8b54132176389170f096776429f8ab1aa0e04ea7ef0974845d73a5031",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/09/articles.jsonl",
+      "size": 15373822,
+      "sha256": "43c73d6ad2ebbf1e8b800a6eb9865eaee79d6db212b963a435a6d9d3c6250b8e",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/10/articles.jsonl",
+      "size": 17181803,
+      "sha256": "497587db194f294de4c552b17ec7f9b075ce9b5a53c7159404023073af84f189",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/11/articles.jsonl",
+      "size": 12632690,
+      "sha256": "5bfffe984d868296d218b593151bf79511da271d28a5483b61b35bfec9105fd1",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/12/articles.jsonl",
+      "size": 16024027,
+      "sha256": "38c21cefd25ce0625ebdd40a59f6b95f6129c41a46a75ab73cb6d8c6a9ae9a55",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/13/articles.jsonl",
+      "size": 16154617,
+      "sha256": "b487c1a725c6278eb9840011a500a712ed3d29a36bf0d8b4efd3f375b633842a",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/14/articles.jsonl",
+      "size": 13832349,
+      "sha256": "1f0353cd24c3d47ac753e71585f4ab0088cb6fc8be0d6d2a4c5d09c2d17f9dba",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/14b/articles.jsonl",
+      "size": 15479325,
+      "sha256": "c968545c50769ba2fe45c56467f6b4676d3eb0556683dabb209c9cb084c5e3d7",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/14c/articles.jsonl",
+      "size": 16816598,
+      "sha256": "b0849f4fb77ac9d3433cea6e8b230baa1ecfc8136c1e6848ef49d31e1552277d",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/15/articles.jsonl",
+      "size": 15661385,
+      "sha256": "dfdbb4429259fa4486c2cc21d353c2e3e17a75cd037be0b369578685faf1174f",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/16/articles.jsonl",
+      "size": 16494336,
+      "sha256": "4410610af4e48cde152db87ec3fb811772b1b90269e80ca6101adc0eb1e38aa2",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/17/articles.jsonl",
+      "size": 14201832,
+      "sha256": "1279c39deed0baa69bd0c08a3ca649baea94e2feb375c6f32756d88919492ef9",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/18/articles.jsonl",
+      "size": 15115666,
+      "sha256": "0c5c9d34d881e228cc6fc41f9494ef891254b4f23e168482d6ebae7432ea22a5",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/19/articles.jsonl",
+      "size": 16958416,
+      "sha256": "961c1d9f09f741b4e9459320780537ea0159c74c5f3e11a09d0b344c3d0c9027",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/20/articles.jsonl",
+      "size": 14465252,
+      "sha256": "1813c388d01d6b30de40c421368ded5ec9a2e860d87c0b87c34e19bad194dc72",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/21/articles.jsonl",
+      "size": 13606467,
+      "sha256": "e3e2811888c24af6df9587f25e5c7a22d52da383d7b833530e23ba45c4c83271",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/22/articles.jsonl",
+      "size": 14431523,
+      "sha256": "3261bf848b6368ebcdce8cc731e87bf2161b4b1c045ea07cbde9939773e5bf60",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/23/articles.jsonl",
+      "size": 11657686,
+      "sha256": "68811537e96ca8596df817821a6178c6c059ad3153fa93bb79533a53fc796ed5",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/24/articles.jsonl",
+      "size": 10777377,
+      "sha256": "a48f14783bbda92913902eb55c31b89984ad3b6b4bd0a3cd03336e0a01bd6504",
+      "license_id": "CC-BY-SA-4.0"
+    },
+    {
+      "path": "bthar-mx/ocr/25/articles.jsonl",
+      "size": 6631803,
+      "sha256": "77e57c585035f8af48d6c572a2792894397d85db1646ef9aa593e89dd102d4ca",
+      "license_id": "CC-BY-SA-4.0"
+    }
+  ]
+}

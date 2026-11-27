@@ -1,0 +1,35 @@
+# Git hooks run locally via `lefthook install` and in CI via `lefthook run pre-commit --all-files`.
+pre-commit:
+  parallel: true
+  commands:
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck -x -s bash {staged_files}
+    shfmt:
+      glob: "*.sh"
+      run: shfmt -d {staged_files}
+    markdownlint:
+      glob: "*.md"
+      run: markdownlint-cli2 {staged_files}
+    prettier:
+      glob: "*.{md,json,yml,yaml}"
+      run: prettier --check {staged_files}
+    actionlint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint {staged_files}
+    ruff-check:
+      glob: "*.py"
+      run: ruff check {staged_files}
+    ruff-format:
+      glob: "*.py"
+      run: ruff format --check {staged_files}
+    gitleaks:
+      run: gitleaks git --staged --redact --no-banner
+
+commit-msg:
+  skip:
+    - merge
+    - rebase
+  commands:
+    conventional-commits:
+      run: bash scripts/conventional-commit.sh {1}

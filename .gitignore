@@ -1,5 +1,6 @@
 # Raw downloaded upstream sources and work scratch (never commit)
 .cache/
+.vendor-ci/
 
 # Compiled database and JSONL build outputs (published via release assets, not plain git)
 dist/

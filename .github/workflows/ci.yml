@@ -22,11 +22,20 @@ jobs:
           fetch-depth: 0
       - name: Install tools with mise
         uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+      - name: Check out @winmetta/myanmar-convert for Zawgyi conversion
+        uses: actions/checkout@v7
+        with:
+          repository: winmetta/winmetta-platform
+          path: .vendor-ci/winmetta-platform
+          sparse-checkout: packages/myanmar-convert
+      - name: Install @winmetta/myanmar-convert runtime dependencies
+        run: npm install --prefix .vendor-ci/winmetta-platform/packages/myanmar-convert --omit=dev --no-audit --no-fund
       - name: Run pre-commit checks on all files
         run: lefthook run pre-commit --all-files
       - name: Run unit tests
         env:
           PYTHONPATH: src
+          MYANMAR_CONVERT_ENTRY: ${{ github.workspace }}/.vendor-ci/winmetta-platform/packages/myanmar-convert/src/index.ts
         run: python3 -m unittest discover -s tests -v
       - name: Scan git history for secrets
         run: gitleaks git --redact --no-banner

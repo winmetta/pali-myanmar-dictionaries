@@ -2,7 +2,7 @@
 
 | Field     | Value                                                                                                                                                                                               |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status    | Stages 0–2 complete; Stage 3 `my-android.db` unique lexicons built and validated (`stage3-v1`); ready for Stage 4 (`tipitaka-abhidhana`).                                                           |
+| Status    | Stages 0–3 complete; Stage 4 29-book `tipitaka-abhidhana` built and validated (`stage4-v1`); ready for Stage 5.                                                                                     |
 | Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database |
 | Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                   |
 
@@ -490,6 +490,16 @@ must travel with the data it indexes.
   - Fill missing books (`14c`, `20`, `21`, `24`, `25`, plus missing entries in `4c` and `14b`) from `bthar-mx/ocr/*/articles.jsonl` with `quality = 'ocr'` and `license_id = 'CC-BY-SA-4.0'`.
   - Support a `--proofed-only` build flag so users who want a pure `winmetta-pd-decision` build (without CC BY-SA 4.0 OCR rows) can generate `tipitaka-abhidhana-proofed.db` with one flag.
 - **Exit criteria:** Coverage report across all 29 books matches expected ~208k–221k entries; page numbers spot-checked against PDFs.
+
+  **Build status (2026-11-28):** `scripts/build-stage4.py` and `scripts/validate-stage4.py`
+  (`dist/stage4-v1`) built and validated both variants across all 29 `source_volumes`:
+  - `tipitaka-abhidhana`: `219,423` entries (`214,251` distinct headwords; `180,139` `proofed`,
+    `39,108` `ocr`, `176` `incomplete` with `U+FFFD` masking; `CC-BY-SA-4.0` OCR gap-fills
+    from `bthar-mx` for books `14c`, `20`, `21`, `24`, `25` and missing entries in `4c`, `14b`).
+  - `tipitaka-abhidhana-proofed` (`--proofed-only`): `180,180` entries (`175,970` distinct
+    headwords; `180,139` `proofed`, `0` `ocr`, `41` `incomplete`; 100% `winmetta-pd-decision`).
+  - `tests/test_stage4.py` verifies volume/part resolution, stub filtering, OCR gap-fills,
+    and `--proofed-only` separation.
 
 ### Stage 5: Per-Book ETL — Topical, Story, Concordance & Reverse Dictionaries
 

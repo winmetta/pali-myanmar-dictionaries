@@ -16,10 +16,11 @@ it refuses to build a source when its preflight validation fails. Corpus tests
 require the local cache, and the Zawgyi bridge has additional dependencies
 described in the implementation plan.
 
-Experimental builds preserve unresolvable source fragments as `�`, mark affected
+Stage 2 builds preserve the 6 unrecoverable source fragments as `U+FFFD` (`�`), mark affected
 entries `incomplete`, and record the pre-masking parsed field (after any verified
-repairs) as Unicode code points in `extra.incomplete_source_fragments`. The PM3 enrichment's license has not yet
-been verified; do not distribute these builds until its rights are resolved.
+repairs) as Unicode code points in `extra.incomplete_source_fragments`. PM3 enrichment
+is omitted by default; only opt-in `--include-pm3` / `--pm3` builds carry unverified
+PM3 data and must not be distributed until its rights are resolved.
 
 ---
 

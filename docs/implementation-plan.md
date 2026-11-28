@@ -1,10 +1,10 @@
 # Implementation Plan: `pali-myanmar-dictionaries`
 
-| Field     | Value                                                                                                                                                                                                                                                          |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status    | Stage 0 complete; Stage 1 libraries validated against the available Pāḷi corpora; Stage 2 release-readiness complete (`stage2-release-v1`, 6 unrecoverable source fragments documented as `incomplete`, PM3 enrichment omitted by default); ready for Stage 3. |
-| Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database                                                            |
-| Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                                                                              |
+| Field     | Value                                                                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status    | Stages 0–2 complete; Stage 3 `my-android.db` unique lexicons built and validated (`stage3-v1`); ready for Stage 4 (`tipitaka-abhidhana`).                                                           |
+| Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database |
+| Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                   |
 
 ---
 
@@ -470,6 +470,16 @@ must travel with the data it indexes.
   1. `pali-abhidhana-chok.db` & `.jsonl` (`~13,745` `♦ချုပ်` segments, Sinhala headwords transliterated to Myanmar Unicode + cross-checked against known Pāḷi headword lists).
   2. `visuddharama-abhidhana.db` & `.jsonl` (`3,135` `♦ဝိ`/`♦ဝိသုဒ္ဓါရုံ` segments + rule-verified untagged segments matching the Visuddhārāma template, flagged with `inferred_untagged` in `extra_json`).
 - **Exit criteria:** Sinhala→Myanmar headword transliteration audited on all out-of-vocabulary headwords; zero `♦မြ` or `♦စိန်` leakage into either DB.
+
+  **Build status (2026-11-27):** `scripts/build-stage3.py` and `scripts/validate-stage3.py`
+  (`stage3-v1` and `stage3-v1-repeat`) produced byte-identical SQLite and JSONL files:
+  - `pali-abhidhana-chok`: `13,740` entries (`13,695` distinct headwords; `1` `incomplete`
+    with `U+FFFD` masking; `0` `inferred_untagged`).
+  - `visuddharama-abhidhana`: `9,287` entries (`9,189` distinct headwords; `24` `incomplete`
+    with `U+FFFD` masking; `6,151` `inferred_untagged` matching the strict Visuddhārāma
+    POS + numbered-sense template and excluding all `♦မြ`/`♦စိန်` patterns).
+  - `tests/test_stage3.py` verifies segment parsing, untagged filtering, deduplication,
+    zero `♦မြ`/`♦စိန်` leakage, and byte-for-byte repeat-build reproducibility.
 
 ### Stage 4: Book-Group ETL — 29-Book `tipitaka-abhidhana.db`
 

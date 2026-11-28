@@ -34,3 +34,6 @@ max-complexity = 10
 max-args = 5
 max-branches = 10
 max-statements = 50
+
+[tool.pyright]
+extraPaths = ["src"]

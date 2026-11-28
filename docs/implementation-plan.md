@@ -2,7 +2,7 @@
 
 | Field     | Value                                                                                                                                                                                               |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status    | Stages 0–3 complete; Stage 4 29-book `tipitaka-abhidhana` built and validated (`stage4-v1`); ready for Stage 5.                                                                                     |
+| Status    | Stages 0–4 complete; Stage 5 topical, story, concordance, and reverse dictionaries built and validated (`stage5-v1`); ready for Stage 6.                                                            |
 | Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database |
 | Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                   |
 
@@ -510,6 +510,17 @@ must travel with the data it indexes.
   4. `pitaka-lamnyun.db` & `.jsonl` (`18,398` 3-volume index entries + category tags from `pitakaguide.db` & `pitaka_guide_topic.csv`).
   5. `u-hoke-sein-mep.db` & `.jsonl` (`71,427` Burmese→English→Pāḷi rows with `page_number` from `mep.db`, plus reconciled extra rows from `tipitaka_pali.db` `book=8`).
 - **Exit criteria:** All 5 DBs pass Unicode, citation, and schema validation checks.
+
+  **Build status (2026-11-28):** `scripts/build-stage5.py` and `scripts/validate-stage5.py`
+  (`dist/stage5-v1` and `dist/stage5-v1-repeat`) produced byte-identical SQLite and JSONL
+  files across all 5 sources (110,188 total entries; `winmetta-pd-decision`):
+  - `sutethana-thayokpya`: `2,269` entries (`2,264` headwords; `37` `incomplete`)
+  - `pitaka-thayokson`: `6,984` entries (`6,395` headwords; `3` `incomplete`)
+  - `pitaka-vatthu-lamnyun`: `3,005` entries (`2,306` headwords; `6` `incomplete`)
+  - `pitaka-lamnyun`: `18,398` entries (`17,931` headwords; `5` `incomplete`)
+  - `u-hoke-sein-mep`: `79,532` entries (`72,742` headwords; `272` `incomplete`,
+    reconciling `mep.db` with extra `tipitaka_pali.db` `book=8` entries)
+  - `tests/test_stage5.py` verifies all 5 ETL pipelines and edge cases.
 
 ### Stage 6: Master Database Compiler, FTS5 Index & Pāḷi Lemmatizer
 

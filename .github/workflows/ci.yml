@@ -32,6 +32,10 @@ jobs:
         run: npm install --prefix .vendor-ci/winmetta-platform/packages/myanmar-convert --omit=dev --no-audit --no-fund
       - name: Run pre-commit checks on all files
         run: lefthook run pre-commit --all-files
+      - name: Build and test shared text package
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run test:pali-text
       - name: Run unit tests
         env:
           PYTHONPATH: src

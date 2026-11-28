@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS entries (
   pdf_page         INTEGER,
   citations_json   TEXT,
   extra_json       TEXT,
-  quality          TEXT NOT NULL DEFAULT 'proofed' CHECK (quality IN ('proofed', 'ocr')),
+  quality          TEXT NOT NULL DEFAULT 'proofed' CHECK (quality IN ('proofed', 'ocr', 'incomplete')),
   license_id       TEXT NOT NULL,
   content_hash     TEXT NOT NULL,
   UNIQUE (source_id, content_hash),

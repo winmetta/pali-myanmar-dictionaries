@@ -17,7 +17,7 @@ MASTER_EXTRA_SCHEMA_PATH = REPO_ROOT / "schemas" / "master-extra-schema.sql"
 VALID_ENTRY_TYPES = frozenset(
     {"pali_term", "pali_root", "topic", "story", "index_ref", "myanmar_term"}
 )
-VALID_QUALITIES = frozenset({"proofed", "ocr"})
+VALID_QUALITIES = frozenset({"proofed", "ocr", "incomplete"})
 HEX64_RE = re.compile(r"[0-9a-f]{64}")
 
 REQUIRED_JSONL_FIELDS = (

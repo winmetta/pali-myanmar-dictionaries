@@ -1,0 +1,11 @@
+{
+  "name": "pali-myanmar-dictionaries-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test:pali-text": "npm run build:pali-text && node --test packages/pali-text/test/*.test.ts",
+    "build:pali-text": "node packages/pali-text/build.mjs"
+  }
+}

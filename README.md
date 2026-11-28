@@ -7,6 +7,20 @@ Maintained by [Win Metta](https://winmetta.org/about/) so anyone building an off
 - **Implementation & schema specification:** [docs/implementation-plan.md](docs/implementation-plan.md)
 - **Research & upstream audit:** [`Pali-Myanmar-Dictionary-Research`](https://github.com/winmetta/winmetta-platform/wiki/Pali-Myanmar-Dictionary-Research) (in `winmetta-platform` wiki)
 
+The shared `@winmetta/pali-text` package and Stage 2 builder are experimental.
+To prepare the workspace for local tests or builds, run `npm ci` and then
+`npm run build:pali-text`. Run `npm run test:pali-text` and
+`PYTHONPATH=src python3 -m unittest discover -s tests -v` for the tests. The
+Stage 2 builder accepts `--audit` to report invalid source rows as JSON Lines;
+it refuses to build a source when its preflight validation fails. Corpus tests
+require the local cache, and the Zawgyi bridge has additional dependencies
+described in the implementation plan.
+
+Experimental builds preserve unresolvable source fragments as `�`, mark affected
+entries `incomplete`, and record the pre-masking parsed field (after any verified
+repairs) as Unicode code points in `extra.incomplete_source_fragments`. The PM3 enrichment's license has not yet
+been verified; do not distribute these builds until its rights are resolved.
+
 ---
 
 ## Planned Datasets (Per Source & Master)

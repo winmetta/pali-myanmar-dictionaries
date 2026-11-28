@@ -198,6 +198,50 @@ class Stage1TransliterationTests(unittest.TestCase):
             conn.close()
 
     @unittest.skipUnless(
+        (CACHE_DIR / "tipitaka-app" / "my-u-hoke-sein.db").is_file(),
+        "Raw U Hoke Sein cache not present (CI environment)",
+    )
+    def test_sinhala_against_embedded_myanmar_headwords(self) -> None:
+        """Measure transliteration against the separate headword in the source meaning."""
+        conn = sqlite3.connect(str(CACHE_DIR / "tipitaka-app" / "my-u-hoke-sein.db"))
+        total = matched = exact = roman_match = variant_equivalent = 0
+        try:
+            for sinhala, meaning in conn.execute("SELECT word, meaning FROM dictionary"):
+                match = re.match(r"^([\u1000-\u103f\-]+)(?:\s|\()", meaning)
+                if match is None:
+                    continue
+                total += 1
+                converted = sinhala_to_myanmar(sinhala)
+                if to_headword_norm(converted) == to_headword_norm(match[1]):
+                    matched += 1
+                expected = normalize_myanmar_text(match[1].replace("-", ""), check_zawgyi=False)
+                normalized = normalize_myanmar_text(converted, check_zawgyi=False)
+                if normalized == expected:
+                    exact += 1
+                    variant_equivalent += 1
+                elif normalized.replace("ါ", "ာ") == expected.replace("ါ", "ာ"):
+                    # The Myanmar reference does not follow the project's tall-aa house style.
+                    variant_equivalent += 1
+                elif normalized.replace("င်္", "ံ") == expected.replace("င်္", "ံ"):
+                    # The project writes Pāḷi nasals before velars with kinzi.
+                    variant_equivalent += 1
+                if myanmar_to_iast(converted) == myanmar_to_iast(expected):
+                    roman_match += 1
+        finally:
+            conn.close()
+        self.assertGreater(total, 52_000)
+        self.assertGreaterEqual(matched / total, 0.995, f"Matched {matched} of {total}")
+        self.assertGreaterEqual(exact / total, 0.99, f"Exactly matched {exact} of {total}")
+        self.assertGreaterEqual(
+            variant_equivalent / total,
+            0.995,
+            f"House-orthography equivalent {variant_equivalent} of {total}",
+        )
+        self.assertGreaterEqual(
+            roman_match / total, 0.995, f"Romanized forms matched {roman_match} of {total}"
+        )
+
+    @unittest.skipUnless(
         (CACHE_DIR / "bthar-mx" / "ocr").is_dir(),
         "Raw bthar-mx cache not present (CI environment)",
     )
@@ -205,6 +249,7 @@ class Stage1TransliterationTests(unittest.TestCase):
         files = sorted(glob.glob(str(CACHE_DIR / "bthar-mx" / "ocr" / "*" / "articles.jsonl")))
         total = 0
         matched = 0
+        roundtrip_matched = 0
         for fp in files:
             with open(fp, encoding="utf-8") as handle:
                 for line in handle:
@@ -216,12 +261,20 @@ class Stage1TransliterationTests(unittest.TestCase):
                     total += 1
                     if myanmar_to_iast(hw, iso15919=True) == iast:
                         matched += 1
+                    if myanmar_to_iast(iast_to_myanmar(iast), iso15919=True) == iast:
+                        roundtrip_matched += 1
         self.assertGreater(total, 220_000)
         accuracy = matched / total
         self.assertGreaterEqual(
             accuracy,
             0.995,
             f"Expected >=99.5% accuracy on {total} bthar-mx pairs, got {accuracy:.5f}",
+        )
+        self.assertGreaterEqual(
+            roundtrip_matched / total,
+            0.995,
+            f"Expected >=99.5% IAST round-trip accuracy on {total} bthar-mx pairs, "
+            f"got {roundtrip_matched / total:.5f}",
         )
 
 

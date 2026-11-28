@@ -47,7 +47,7 @@
       "items": { "type": "string" }
     },
     "extra": { "type": ["object", "null"] },
-    "quality": { "type": "string", "enum": ["proofed", "ocr"] },
+    "quality": { "type": "string", "enum": ["proofed", "ocr", "incomplete"] },
     "license_id": { "type": "string", "minLength": 1 },
     "content_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
   }

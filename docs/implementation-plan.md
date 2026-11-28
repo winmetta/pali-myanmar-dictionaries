@@ -2,7 +2,7 @@
 
 | Field     | Value                                                                                                                                                                                               |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status    | Planned (Stage 0 complete: repo & research baseline initialized 2026-11-27)                                                                                                                         |
+| Status    | Stage 0 complete; Stage 1 libraries validated against the available Pāḷi corpora; Stage 2 builds are reproducible, with incomplete source rows and PM3 rights still outstanding.                    |
 | Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database |
 | Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                   |
 
@@ -127,9 +127,9 @@ CREATE TABLE entries (
   -- Citations, book-specific fields & quality/license tier
   citations_json   TEXT,             -- JSON array of canonical scripture/grammar citations
   extra_json       TEXT,             -- JSON object for source-specific fields (gaṇa class, tags, pli_equivalents, etc.)
-  quality          TEXT NOT NULL CHECK (quality IN ('proofed', 'ocr')),
+  quality          TEXT NOT NULL CHECK (quality IN ('proofed', 'ocr', 'incomplete')),
   license_id       TEXT NOT NULL,    -- per-row license ('winmetta-pd-decision' vs 'CC-BY-SA-4.0' in hybrid tipitaka-abhidhana)
-  content_hash     TEXT NOT NULL,    -- SHA-256 of canonical (source_id, headword, homonym_no, pos, etymology, definition_text, volume_code, printed_page)
+  content_hash     TEXT NOT NULL,    -- SHA-256 of canonical base tuple plus source-specific supplemental payload
 
   UNIQUE (source_id, content_hash)
 );
@@ -154,16 +154,158 @@ CREATE VIRTUAL TABLE entries_fts USING fts5(
 
 Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted deterministically by `headword`, `homonym_no`, `printed_page`, `content_hash`), omitting `id` and expanding `senses_json`, `citations_json`, and `extra_json` as native JSON arrays/objects so downstream developers in Python, Rust, Go, or JavaScript can ingest them without parsing nested JSON strings.
 
+The canonical hash base tuple is `(source_id, headword, homonym_no, pos,
+etymology, definition_text, volume_code, printed_page)`. Stage 2 appends a
+deterministic JSON encoding of its remaining parsed fields, including the English
+gloss and source-specific payload, before hashing. This preserves entries whose
+base tuple matches but whose English gloss or other extracted content differs.
+Each extractor must document its supplemental fields and compare complete records
+before treating a repeated hash as a duplicate.
+
 ---
 
 ## 4. Text Normalization & Transliteration Rules
 
-1. **Zawgyi Detection & Conversion:** convert known Zawgyi columns (`vatthuguide.content`, `pitakaguide.tags`/`ranges`, `pm3` hyphenated headwords) by invoking [`winmetta-platform/packages/myanmar-convert/src/index.ts`](https://github.com/winmetta/winmetta-platform/blob/main/packages/myanmar-convert/src/index.ts) (`convert` and `detect` via Node 24 batch worker over JSONL stdin/stdout), and run a post-conversion detector check asserting `0` remaining Zawgyi code-point patterns (`U+1060`–`U+1097`, leading `U+1031`, malformed kinzi).
+1. **Zawgyi Detection & Conversion:** convert known Zawgyi columns (`vatthuguide.content`, `pitakaguide.tags`/`ranges`, `pm3` hyphenated headwords) using `convert` and `detect` from [`@winmetta/myanmar-convert`](https://github.com/winmetta/winmetta-platform/tree/main/packages/myanmar-convert), and run a post-conversion detector check asserting `0` remaining Zawgyi code-point patterns (`U+1060`–`U+1097`, leading `U+1031`, malformed kinzi). The current Python bridge uses a Node worker; replace its sibling-checkout dependency with the reproducible package path described below.
 2. **Sinhala → Myanmar Pāḷi Transliteration (`my-android.db`):**
    - Map Sinhala Pāḷi vowels, consonants, virama (`්` `U+0DCA` → `္` `U+1039`), and anusvara (`ං` `U+0D82` → `ံ` `U+1036`, or kinzi `င်္` before velars `က/ခ/ဂ/ဃ/င` where standard Myanmar Pāḷi orthography writes kinzi, e.g., `අංකුර` → `အင်္ကုရ`, verified against `freococo/pali-words-myanmar-script.jsonl` and `abidan_new.db`).
    - Apply tall `ါ` (`U+102B`) vs. standard `ာ` (`U+102C`) contextually per `burmese-pali-orthography` rules (`ါ` after unclustered `ခ, ဂ, င, ဒ, ပ, ဝ`, except where subscripted/medialed).
 3. **Canonical Myanmar Syllable Ordering:** normalize every syllable to `Base → Subscript (U+1039 + C) → Medials (ျ ြ ွ ှ) → ေ (U+1031) → Upper/Lower (ိ ီ ဲ / ု ူ) → ံ (U+1036) → ါ/ာ → Final+် → Tone (့ း)` and strip `U+200B` / `U+200C` / `U+FEFF`.
 4. **Loose Search Key (`headword_norm`):** fold `ါ`→`ာ`, `ဉ`/`ဥ` equivalence at syllable boundaries (note NFC already normalizes decomposed `ဥ`+`ီ` `U+1025 U+102E` to `ဦ` `U+1026`), strip hyphens/spaces, and flatten stacked virama `U+1039` → `U+103A` (or bare consonant sequence) so learners typing unstacked `ပဉဟ` or `သမ္မာ` variants still match `ပဉှ` and `သမ္မာ`.
+
+### 4.1 Shared TypeScript package and migration
+
+Initially develop a browser-compatible `@winmetta/pali-text` package in this
+repository, alongside the corpus and validation tests. It will own reusable text
+normalization, lookup-key generation, validation and Pāḷi transliteration. Keep
+source-specific parsers and ETL, SQLite/JSONL generation, and release packaging in
+this dictionary project. The dictionary builder consumes the package as an npm
+workspace dependency; `winmetta-platform` consumes a versioned package release
+with its dependency recorded in its lockfile. The package must run in browsers
+without Node-only APIs or a dependency on raw dictionary data.
+
+**Migration status:** the experimental workspace package currently ports Myanmar
+normalization, loose lookup keys, and Myanmar/IAST/Sinhala transliteration. Local tests
+compare those functions against Python on distinct Stage 2 source headwords and
+compare the IAST conversions across all 221,764 BTHAR reference pairs. The
+Sinhala-to-Myanmar output and cleanup also match Python on all 115,357 cached
+`my-android.db` headwords. The experimental Stage 2 builder uses the package for
+lookup keys through a Node worker. Remaining corpus-wide checks, reproducible
+`myanmar-convert` distribution, and a versioned package release are still
+outstanding. Its current Node type-stripping build uses an
+experimental Node API and needs a stable, pinned TypeScript build tool before a
+package release.
+
+1. Define the public API and fixtures, then port the existing Python behavior to
+   TypeScript incrementally. Keep the Python implementation and existing corpus
+   tests during migration; compare both implementations on the same corpus and
+   edge cases, investigate every difference, and record intentional changes.
+2. Run the existing accuracy and Unicode gates against the TypeScript package,
+   including the full local corpus checks, and exercise its public entry point in
+   a browser-compatible test. The migration itself does not resolve the outstanding
+   Sinhala accuracy/round-trip validation or mixed-encoding issues described in
+   Stages 1 and 2; those remain separate acceptance requirements.
+3. Establish a reproducible cross-repository consumption path for the currently
+   private `@winmetta/myanmar-convert` package. Choose and document a versioned,
+   immutable distribution or pinned package artifact, its build and integrity
+   verification, and lockfile-based installation in a clean checkout and CI.
+   Do not depend on a sibling checkout or its internal TypeScript source paths.
+   Verify browser compatibility for any conversion functionality exposed by
+   `pali-text`; keep Node-only build tooling outside its browser entry point.
+4. Before publishing either package under `@winmetta`, verify npm scope ownership
+   and obtain explicit approval for publishing. Until a release is available,
+   validate the consumer integration against a reproducibly built, pinned package
+   artifact rather than assuming registry access.
+5. Record the exact `@winmetta/pali-text` version and artifact identity in the
+   dataset manifest. Treat lookup-key behavior changes and regenerated datasets as
+   matched releases: test package-generated keys against the corresponding SQLite
+   and JSONL outputs, including exact, loose and IAST lookup cases, and verify that
+   the platform uses the matching package and dataset versions.
+
+#### Consumer requirements (added 2026-11-27 from the `winmetta-platform` design)
+
+`winmetta-platform` will consume this package from two places: the Pāḷi
+Dictionary mini app (the lookup key, now with a mock) and a generic input
+package, `@winmetta/myanmar-input`, that lets a person type Burmese or Pāḷi in
+Burmese script and returns clean Unicode (design in the platform's
+`docs/myanmar-input.md` and `docs/pali-dictionary.md`). A later lookup service
+or static-shard builder is a third consumer. The items below are what those
+consumers need before they can depend on a release. They refine items 1–5
+above (they do not replace them) and are numbered R1–R6.
+
+- **R1. Separate entry points for the browser and the builder.** Expose subpath
+  exports: `.` (normalization and the lookup key), `./translit` (Myanmar and
+  IAST) and `./sinhala` (builder only, never imported by a browser), and set
+  `"sideEffects": false`. Give the browser entry point a size budget, because
+  the platform's web app enforces budgets on its search code and phones are a
+  main audience. Roman IAST lookup is a Stage 6 feature, so `./translit` must
+  stay browser-safe; Sinhala tables must not ship to browsers.
+- **R2. Version the lookup key.** Export `HEADWORD_KEY_VERSION` (an integer) and
+  write it to the dataset manifest, to each per-source and master database
+  (for example a `meta` table), and to any shard index used for static lookup.
+  A change to the key's behavior is a semver-major package change, bumps the
+  key version and requires regenerated datasets and shards. A client that finds
+  a key version different from the dataset it queries must stop and report the
+  mismatch rather than silently miss entries. Test vectors for the key (pairs
+  and groups that must collide, such as `ဓမ္မ` / `ဓမမ`, `ပဉှ` / `ပဉဟ`,
+  `သင်္ဃ` / `သံဃ`, `သဿတ` / `သသသတ`) are generated from the Python
+  implementation, committed as a fixture file and consumed by both this
+  repository's tests and the platform's.
+- **R3. A non-throwing canonicalizer that reports what it changed.** Keep
+  `normalizeMyanmarText` strict for the builder (it throws on a Zawgyi marker).
+  Add a tolerant function that never throws and returns the canonical text and a
+  list of fix codes (for example `moved-e`, `reordered-marks`, `moved-stack`,
+  `merged-nya-u`, `removed-zero-width`). User input needs this for its notices;
+  the codes are data, never sentences. It must give the same text as the strict
+  canonicalizer wherever that one does not throw, which a test enforces.
+- **R4. A reproducible build and a release path that needs no account.**
+  - Replace the experimental `stripTypeScriptTypes` step with a pinned
+    compiler (`tsc`) that emits JavaScript and `.d.ts` files, so the compiled
+    output does not depend on the Node version that built it.
+  - Make `exports` resolve in a clean checkout. `dist/` is git-ignored for the
+    datasets, so either build in `prepack` and point consumers only at the
+    packed artifact, or move the package's output outside the ignored path. The
+    `types` condition must point at the emitted `.d.ts`, not `src/`.
+  - Commit `package-lock.json` (CI already runs `npm ci`).
+  - Publish each release as a tarball from `npm pack`, attached to a GitHub
+    Release of this repository (the same channel as the datasets). A consumer's
+    lockfile pins it by URL and integrity hash, so no registry account or token
+    is needed. Do not use GitHub Packages (it needs a token to read). Publishing
+    to the npm registry stays a later, separately approved step (item 4).
+  - Add a CI smoke test that packs the package, installs the tarball into an
+    empty project and imports every public entry point, and a browser-runtime
+    check of the browser entry point (item 2).
+  - Record the git commit, package version and tarball integrity hash in the
+    dataset manifest instead of only the SHA-256 of `dist/index.js`, which
+    today depends on the build tool and the package version stays `0.0.0`.
+- **R5. State the end of the Python key function.** The Stage 2 builder already
+  computes lookup keys through the TypeScript package, so Python's
+  `to_headword_norm` is a test oracle. Keep it as such, with the corpus
+  comparison as a standing gate, and do not call it from production build
+  paths. Remove it only after the TypeScript package has been released and the
+  datasets regenerated with it.
+- **R6. Dependency direction.** `@winmetta/pali-text` may depend on
+  `@winmetta/myanmar-convert` (Zawgyi conversion) once that package has a
+  pinned distribution (item 3). It must never depend on `@winmetta/myanmar-input`
+  or on any application. The platform's input package depends on both.
+
+**Lookup shards are keyed by the loose key (proposed, not decided).** If the
+platform serves headword lookup as static files on a CDN, with an API fallback
+for searching inside definitions, the files are split by the loose key
+(`headword_norm`), not the display headword, so spelling variants such as `ဓမ္မ`,
+`ဓမမ` and `ဓမ္မာ` fall in the same file. The shard scheme must be chosen and the
+key frozen (R2) before shards are generated. Shard sizes have not been
+measured: common starting syllables (`ဓမ္မ`, `သ`, `ပ`) may give uneven files at
+about 350,000 entries, so measure on the compiled master database first. This
+choice is open; Stage 6 should not assume it.
+
+After the master database and JSONL files have been generated, revisit the
+package's long-term home: a separate `winmetta/pali-text` repository or
+`winmetta-platform`. (`@winmetta/myanmar-convert` lives in
+`winmetta-platform/packages/`; there is no separate repository for it.) Decide
+then based on the actual consumers, ownership and release workflow; neither move
+is assumed now. Until then the key stays with the dataset, because its version
+must travel with the data it indexes.
 
 ---
 
@@ -185,6 +327,41 @@ Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted d
   - Clean HTML/text parser for `pndaza/tipitaka_pali.db` (`<p class="word">`, `<span class="gender">`, `<div class="viggaha">`, `<ul><li>`, `<p class="reference">`, `<p class="source">`) and `my-android.db` (`+` / `♦` segment splitter).
 - **Exit criteria:** ≥99.5% round-trip accuracy on known Myanmar↔IAST/Sinhala headword pairs; 100% unit test coverage on tricky ligatures, kinzi, tall `ါ`, and Zawgyi edge cases.
 
+  **Validation status (2026-11-27):** the BTHAR corpus test checks 221,764 pairs:
+  Myanmar-to-IAST matched 221,518 (99.889%) and IAST-to-Myanmar-to-IAST matched
+  221,693 (99.968%). The TypeScript package now also converts Myanmar to Sinhala.
+  For 53,020 Sinhala source headwords, Sinhala → Myanmar → Sinhala → Myanmar
+  preserved the intermediate Myanmar form in every case. This measures stability,
+  not accuracy against an independently verified Sinhala corpus.
+
+  A separate U Hoke Sein source also embeds Myanmar headwords in its meanings.
+  A test compares these with converted Sinhala headwords using the loose lookup key:
+  52,932 of 52,951 extracted pairs match (99.964%) after applying the reviewed
+  Myanmar Pāḷi house conventions for tall `ါ` and kinzi. The strict exact comparison
+  remains 52,448 of 52,951 (99.050%).
+  Removing only source hyphens and applying the existing canonical normalizer,
+  52,448 pairs match exactly (99.050%). Their generated IAST forms match on 52,785
+  pairs (99.687%); the latter shares a transliterator between both sides and is
+  not an independent phonetic reference. Review of all 503 strict mismatches found
+  336 tall-aa variants and 148 kinzi/anusvara variants. The output spelling follows
+  the project's house rules: use standard `ာ` after stacked consonants or bases
+  outside the tall-aa set, and kinzi before velars in Pāḷi. In all 336 tall-aa
+  pairs the embedded reference uses tall `ါ` where that house style calls for
+  standard `ာ` (311 follow a stack; 25 follow a base outside the tall-aa set).
+  All 148 nasal variants are kinzi before a velar in the output and anusvara in
+  the embedded reference. The 19 remaining pairs were reviewed: the generated
+  form occurs as an exact headword in the independent `abidan_new.db` index in
+  10 cases; the other nine embedded forms contain malformed or misplaced Myanmar
+  sequences and were checked against the Sinhala spelling and Unicode syllable
+  order. Their row IDs are 4872, 14686, 18374, 32204, 32569, 37396, 40454, 43900,
+  and 51867. `scripts/audit-sinhala.py` reports the house-orthography comparison and
+  emits the source row IDs and both forms for review;
+  69 source rows do not have a headword in the extractable format.
+  A cross-check of the 19 other mismatches against the cached `abidan_new.db`
+  The variant-aware corpus score passes the ≥99.5% Stage 1 threshold; the strict
+  exact score and lack of a native-reviewed Sinhala parallel corpus remain explicit
+  limitations. The 69 unextractable rows are not included in the score.
+
 ### Stage 2: Per-Book ETL — Clean Single-Book Pāḷi→Burmese Lexicons
 
 - **Targets:**
@@ -192,6 +369,73 @@ Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted d
   2. `dhatuattha-pankone.db` & `.jsonl` (`11,086` rows from `book=3`, extracting `root_pali`, `viggaha`, grammar citations, and Burmese glosses).
   3. `pali-dhatu-abhidhana.db` & `.jsonl` (`1,894` rows from `book=4`, extracting `gana_classes`, Pāḷi sense locatives, Burmese root meanings, and sample verbs).
 - **Exit criteria:** All 3 SQLite DBs and JSONL files build deterministically with 0 Zawgyi characters, 0 HTML tags in `definition_text`, and verified row/headword counts.
+
+  **Input audit (2026-11-27):** the primary Unicode HTML contains Zawgyi markers in
+  95 book 2 and 68 book 3 definitions. Mixed strings are sometimes classified as
+  `unsure` by the converter; blindly converting the whole string can corrupt Unicode
+  Pāḷi. Resolve and test these cases before accepting a build. Book 4 has no detected
+  markers in the upstream definitions. These counts use the current marker detector.
+  A later parsed-row audit found 94 invalid book 2 rows and 44 invalid book 3 rows.
+  Targeted kinzi repairs, accepted only against the row's lookup word or a listed
+  exact headword elsewhere in the primary corpus, reduced the unresolved rows to
+  23 and 40 respectively. Repairs are recorded in `extra`. Some book 3 source
+  definitions end with a lone `ေ`; the same truncated text appears in the alternate
+  `pmd_drive.db` digitization, so missing text is not reconstructed. For an
+  unresolved glyph the experimental build inserts `�`, marks the row
+  `quality = 'incomplete'`, and records the pre-masking parsed field's code points
+  in `extra.incomplete_source_fragments`. Where the source header cannot be
+  repaired, it uses the separate source lookup word and records that fallback.
+  Thirteen further exact-term repairs are corroborated by clean occurrences in
+  definitions of the same primary corpus; observed compounds preserve their
+  surrounding text. Fourteen book 3 definitions have been restored from `♦မြ`
+  segments in `my-android.db` that match the headword, grammatical analysis and,
+  where present, the surrounding citation. Each restoration records the alternate
+  source row, segment and original parsed code points. The latest build retains
+  30 incomplete entries (6 book 2 and 24 book 3); those entries still need review
+  and are not proofed definitions.
+  A lookup of the six remaining incomplete U Hoke Sein entries in the cached
+  `my-u-hoke-sein.db`, using the existing Sinhala transliterator and loose Myanmar
+  key, found five candidate records for four headwords; all relevant definitions
+  contain Zawgyi markers, one headword has a homonym candidate, and two have none.
+  The corresponding `pmd_drive.db` rows repeat the same damaged fragments. No
+  candidate supplies a clean, independently corroborated replacement.
+  PM3 enrichment now converts known-Zawgyi headword candidates and attaches a
+  unique match only when both Roman and Myanmar lookup keys agree, with source
+  attribution. The current build enriches 31,258 output entries. The separate
+  PM3 source's license has not been verified; enrichment is marked `unverified`
+  per entry and requires a rights decision before distribution.
+  `scripts/audit-pm3-overlap.py` compares the built enrichment with the primary
+  source's parsed display headword: 31,178 enriched entries have identical
+  hyphenation, 7 have different hyphenation, and 73 have no hyphen in the primary
+  display headword. This identifies potential primary-source alternatives but does
+  not establish PM3's license or authorize discarding its distinct readings.
+  The parser-level audit also found 43 pairs of entries whose original hash tuple
+  matched while their other parsed fields differed; the Stage 2 hash now includes
+  those supplemental fields, and repeated hashes are checked before deduplication.
+  Two fresh full builds (`stage2-annotated-v11` and its repeat) produced
+  byte-identical SQLite and JSONL files:
+  60,775 U Hoke Sein entries (58,195 display headwords; 6 incomplete), 11,073
+  Dhātuattha entries (9,543 display headwords; 24 incomplete), and 1,894 Pāḷi
+  Dhātu entries (1,882 headwords; none incomplete). Counts differ from upstream
+  lookup-word counts because display headwords are parsed and exact duplicates
+  are collapsed. `scripts/validate-stage2.py` checks integrity, attribution,
+  Unicode, FTS, JSONL equivalence and repeat-build hashes. Seven additional
+  exact-source restorations reduce the incomplete Dhātuattha entries from 31 to
+  24; 14 such restorations are now recorded in total. These are experimental
+  outputs, pending semantic review and PM3 rights review before release.
+
+  **Source leads (2026-11-27):** [Dhamma Download's book index](https://www.dhammadownload.com/Others-eBookInMyanmar.htm)
+  links a [U Hoke Sein dictionary PDF](https://dhammadownload.com/File-Library/other/U-HoteSein-Parli-Myanmar-Dictionary.pdf).
+  The PDF could not be fetched in this environment, so its edition, completeness,
+  legibility, and relevance to the incomplete entries have not been verified.
+  The [projector's Snap listing](https://snapcraft.io/install/tipitaka-pali-projector/arch)
+  shows its license as unset; this does not establish rights for the PM3 data.
+  The projector's 2018 [terms and credits](https://pdfhost.io/v/nU.ZPQ2Ti_Pi_Tipiaka_Projector_License_Note_version_10_20180501.pdf)
+  say the app is for free distribution only and third-party materials may carry
+  rights reserved by their owners. Those terms do not grant reuse rights for PM3.
+  The GitHub repository has no root `LICENSE` file listed. PM3 remains
+  `unverified` and must not be distributed until PM3-specific rights are confirmed
+  or the enrichment is removed from the release build.
 
 ### Stage 3: Per-Book ETL — `my-android.db` Unique Lexicons
 
@@ -223,7 +467,7 @@ Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted d
 ### Stage 6: Master Database Compiler, FTS5 Index & Pāḷi Lemmatizer
 
 - **Deliverables:**
-  - `scripts/compile-master.py`: attaches the selected per-source SQLite DBs, populates `sources`, `source_volumes`, `entries`, and `entries_fts`, and builds `pali_lemmatizer` (permissive Myanmar-script inflection→lemma & sandhi breakup lookup from `dpr_stem` / `dpr_breakup` / `palinlp2` / `freococo`).
+  - A master compiler: attaches the selected per-source SQLite DBs, populates `sources`, `source_volumes`, `entries`, and `entries_fts`, and builds `pali_lemmatizer` (permissive Myanmar-script inflection→lemma & sandhi breakup lookup from `dpr_stem` / `dpr_breakup` / `palinlp2` / `freococo`). Keep this dataset-specific compiler in this repository as the builder migrates to TypeScript.
   - Produce two master variants if needed:
     1. `pali-myanmar-master.db` (all sources, including `CC-BY-SA-4.0` OCR gap-fills in `tipitaka-abhidhana`, clearly labeled).
     2. `pali-myanmar-master-pd.db` (`winmetta-pd-decision` & `CC0-1.0` rows only).
@@ -233,7 +477,7 @@ Each `<source_id>.jsonl` emits one UTF-8 JSON object per `entries` row (sorted d
 ### Stage 7: Release Packaging, Documentation & Checksums
 
 - **Deliverables:**
-  - Compress every `<source_id>.db`, `<source_id>.jsonl`, and `pali-myanmar-master*.db` with `zstd -19` (`.zst`), generate `SHA256SUMS` and `manifest.json` (row counts, byte sizes, SHA-256, license per file), and write `DATA-LICENSES.md`.
+  - Compress every `<source_id>.db`, `<source_id>.jsonl`, and `pali-myanmar-master*.db` with `zstd -19` (`.zst`), generate `SHA256SUMS` and `manifest.json` (row counts, byte sizes, SHA-256, license per file, and the exact `pali-text` version and artifact identity used), and write `DATA-LICENSES.md`.
   - Publish `v0.1.0` via `gh release create` on `winmetta/pali-myanmar-dictionaries` with a small helper script (`scripts/download-release.sh`) for downstream apps (including `winmetta-platform`).
 - **Exit criteria:** Clean download + checksum verification from public GitHub Release URLs without authentication.
 

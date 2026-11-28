@@ -61,8 +61,21 @@ VERIFIED_CONTEXT_TOKENS = {
     "သဂြုႋဟ်မြှုပ်နှံမည့်သူမရှိသော": "သင်္ဂြိုဟ်မြှုပ်နှံမည့်သူမရှိသော",
     "မီးရှို့သဂြုႋဟ်ရာမီး": "မီးရှို့သင်္ဂြိုဟ်ရာမီး",
     "ခြသေ့ၤ": "ခြင်္သေ့",
+    # Book 2: all other ဗျူဟ/ဗျူဠှ/ဦဟတိ entries in book 2 (and book 1 ပရိဗျူဠှ) use √ဦဟ်.
+    "ဥႌဟ်": "ဦဟ်",
+    # Book 2: visual spelling of standard Myanmar Unicode ဪ (U+102A, also used in book 1).
+    "ေဩာ်ကောင်းစွတကား": "ဪကောင်းစွတကား",
+    "ေဩာ်ကောင်းလေစွ": "ဪကောင်းလေစွ",
+    "ေဩာ်": "ဪ",
+    # Book 3: digit ၀ (U+1040) after leading ေ for ဝေဝစန (68x in book 1, 2x in book 2).
+    "ေ၀၀စန": "ဝေဝစန",
+    "ေ၀၀စနေ": "ဝေဝစနေ",
+    # Book 3: ဟိင်္ဂုလ etymology ဟိင်္ဂုံ (hiṅguṃ) and
+    # အင်္ဂုလိ+ဖောတနဉ္စ (အဂုၤလိ is in VERIFIED_KINZI_TOKENS).
+    "ဟိဂုႍ": "ဟိင်္ဂုံ",
+    "အဂုၤလိဖောတနဉ္စ": "အင်္ဂုလိဖောတနဉ္စ",
 }
-MYANMAR_TOKEN = re.compile(r"[\u1000-\u103f\u1060-\u1097]+")
+MYANMAR_TOKEN = re.compile(r"[\u1000-\u1040\u1060-\u1097]+")
 
 
 def repair_verified_tokens(text: str) -> tuple[str, list[dict[str, str]]]:

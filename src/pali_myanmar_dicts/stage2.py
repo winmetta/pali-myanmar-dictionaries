@@ -203,10 +203,8 @@ def audit_source(input_db: Path, source: Source) -> list[tuple[int, str, str]]:
 def load_source_pm3(
     source: Source, pm3_path: Path | None
 ) -> dict[tuple[str, str], set[str]] | None:
-    if source.source_id != "u-hoke-sein":
+    if source.source_id != "u-hoke-sein" or pm3_path is None:
         return None
-    if pm3_path is None:
-        raise ValueError("U Hoke Sein build requires the PM3 source file")
     return build_pm3_index(pm3_path)
 
 

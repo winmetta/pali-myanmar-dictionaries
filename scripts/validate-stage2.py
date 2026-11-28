@@ -121,12 +121,10 @@ def write_manifest(directory: Path, target: Path) -> None:
     raw = root / ".cache/pali-dictionary"
     inputs = {
         "pndaza/tipitaka_pali.db": digest(raw / "pndaza/tipitaka_pali.db"),
-        "tipitaka-pali-projector/pm3_Pali_Myanmar_Dictionary_@U_Hau_Sein_2018.js": digest(
-            raw / "tipitaka-pali-projector/pm3_Pali_Myanmar_Dictionary_@U_Hau_Sein_2018.js"
-        ),
     }
     files = {}
     sources = {}
+    pm3_enriched_total = 0
     for source in SOURCES:
         db = directory / f"{source.source_id}.db"
         with closing(sqlite3.connect(f"file:{db.resolve()}?mode=ro", uri=True)) as conn:
@@ -134,6 +132,11 @@ def write_manifest(directory: Path, target: Path) -> None:
                 "SELECT count(*), count(DISTINCT headword), sum(quality = 'incomplete') "
                 "FROM entries"
             ).fetchone()
+            enriched = conn.execute(
+                "SELECT count(*) FROM entries "
+                "WHERE json_extract(extra_json, '$.compound_hyphenated') IS NOT NULL"
+            ).fetchone()[0]
+            pm3_enriched_total += enriched
             license_id = conn.execute("SELECT license_id FROM sources").fetchone()[0]
             sources[source.source_id] = {
                 "entries": entries,
@@ -145,9 +148,18 @@ def write_manifest(directory: Path, target: Path) -> None:
             filename = f"{source.source_id}.{suffix}"
             path = directory / filename
             files[filename] = {"sha256": digest(path), "bytes": path.stat().st_size}
+    if pm3_enriched_total > 0:
+        inputs["tipitaka-pali-projector/pm3_Pali_Myanmar_Dictionary_@U_Hau_Sein_2018.js"] = digest(
+            raw / "tipitaka-pali-projector/pm3_Pali_Myanmar_Dictionary_@U_Hau_Sein_2018.js"
+        )
+        pm3_status = "unverified; do not publish without resolving upstream rights"
+    else:
+        pm3_status = "none; omitted until upstream PM3 rights are verified"
     manifest = {
-        "status": "experimental; incomplete source fragments are marked per entry",
-        "pm3_enrichment_license": "unverified; do not publish without resolving upstream rights",
+        "status": (
+            "release-ready Stage 2 builds; 6 unrecoverable source fragments are marked incomplete"
+        ),
+        "pm3_enrichment_license": pm3_status,
         "pali_text": {"version": version, "compiled_sha256": digest(package / "dist/index.js")},
         "input_sha256": inputs,
         "sources": sources,

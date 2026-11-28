@@ -1,10 +1,10 @@
 # Implementation Plan: `pali-myanmar-dictionaries`
 
-| Field     | Value                                                                                                                                                                                               |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status    | Stage 0 complete; Stage 1 libraries validated against the available Pāḷi corpora; Stage 2 builds are reproducible, with incomplete source rows and PM3 rights still outstanding.                    |
-| Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database |
-| Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                   |
+| Field     | Value                                                                                                                                                                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status    | Stage 0 complete; Stage 1 libraries validated against the available Pāḷi corpora; Stage 2 release-readiness complete (`stage2-release-v1`, 6 unrecoverable source fragments documented as `incomplete`, PM3 enrichment omitted by default); ready for Stage 3. |
+| Scope     | Extract, normalize to Myanmar Unicode, deduplicate, and package 11 Pāḷi–Myanmar / Buddhist reference sources into per-source SQLite + JSONL datasets and one compiled master SQLite + FTS5 database                                                            |
+| Raw cache | `.cache/pali-dictionary/` (`~6.2 GB`, gitignored)                                                                                                                                                                                                              |
 
 ---
 
@@ -412,17 +412,44 @@ must travel with the data it indexes.
   The parser-level audit also found 43 pairs of entries whose original hash tuple
   matched while their other parsed fields differed; the Stage 2 hash now includes
   those supplemental fields, and repeated hashes are checked before deduplication.
-  Two fresh full builds (`stage2-annotated-v11` and its repeat) produced
-  byte-identical SQLite and JSONL files:
-  60,775 U Hoke Sein entries (58,195 display headwords; 6 incomplete), 11,073
-  Dhātuattha entries (9,543 display headwords; 24 incomplete), and 1,894 Pāḷi
-  Dhātu entries (1,882 headwords; none incomplete). Counts differ from upstream
+  Two fresh full builds (`stage2-release-v1` and `stage2-release-v1-repeat`)
+  produced byte-identical SQLite and JSONL files:
+  60,775 U Hoke Sein entries (58,195 display headwords; 3 incomplete; 0 PM3-enriched),
+  11,073 Dhātuattha entries (9,543 display headwords; 3 incomplete), and 1,894 Pāḷi
+  Dhātu entries (1,882 headwords; 0 incomplete). Counts differ from upstream
   lookup-word counts because display headwords are parsed and exact duplicates
   are collapsed. `scripts/validate-stage2.py` checks integrity, attribution,
-  Unicode, FTS, JSONL equivalence and repeat-build hashes. Seven additional
-  exact-source restorations reduce the incomplete Dhātuattha entries from 31 to
-  24; 14 such restorations are now recorded in total. These are experimental
-  outputs, pending semantic review and PM3 rights review before release.
+  Unicode, FTS, JSONL equivalence and repeat-build hashes, and writes
+  `dist/stage2-release-v1/manifest.json`.
+
+  **Stage 2 release-readiness review (2026-11-27):**
+  - **Incomplete entries (30 → 6):** 24 of the 30 previously incomplete entries
+    were resolved with corpus-verified evidence:
+    - 7 via `src/pali_myanmar_dicts/mixed_encoding.py` (`√ဥႌဟ်` → `√ဦဟ်` in
+      `သမုပဗျူဠှ`, `ေဩာ်` → `ဪ` in `အဟော` and `အာမန္တာ`, `ေ၀၀စန`/`ေ၀၀စနေ` →
+      `ဝေဝစန`/`ဝေဝစနေ` in `ဝိဝစန` and `ဝိဝိတ္တ`, `ဟိဂုႍ` → `ဟိင်္ဂုံ` in `ဟိင်္ဂုလ`,
+      and `အဂုၤလိဖောတနဉ္စ` → `အင်္ဂုလိဖောတနဉ္စ` in `အစ္ဆရာ`).
+    - 17 via exact `my-android.db` `♦မြ` restorations in
+      `src/pali_myanmar_dicts/source_restorations.py` (bringing total `my-android.db`
+      restorations to 31): `ကောလာဟလ`, `ဂဇ္ဇတိ`, `ဃောသတိ`, `ဃောသာပေတိ`, `ဃောသေတိ`,
+      `ဇူတ` (`√ဇု+တ` and `√ဇုတ+အ`), `ဓရတိ`, `ပရိယုဒဉ္စန`, `ဖလတိ`, `သမုဂ္ဃောသယန္တ`,
+      `သာဓက`, `အက္ခ`, `ဣဏာယက`, `ဥဒ္ဓါရ` (`ဥ√ဓရ+ဏ` and `ဥ√ဟရ+ဏ`), and `ဥန္နဒတိ`.
+    - **6 remaining unrecoverable `quality = 'incomplete'` entries** (preserved
+      with `U+FFFD` (``) and original code points in `extra.incomplete_source_fragments`):
+      - `u-hoke-sein` (3): `ကောင်္ဉ္စီ` (primary `<p class="word">ကောဉ္စီၤ</p>` has
+        trailing `U+1064` and corrupted lookup word `ကောင်္ဉ္စီ`), `ဗိမ္ဗ-ဇာလက-သဉ္ဆန္န`
+        (`ရတ္တကုရကဝနေန` with `U+1064`, no exact primary-corpus match), and
+        `သင်္ကုဥက` (both `<p class="word">သကုၤု-က</p>` and lookup word are corrupted).
+      - `dhatuattha-pankone` (3): `ဃောသ` (`my-android.db` rowid 40486 only has the
+        `ဃောသအက္ခရာ` entry), `သဋ` (`my-android.db` rowid 106833 only has
+        `ကျင်နာကိုက်ခဲ၏။`), and `ဥဂ္ဃေါသတိ` (`my-android.db` has `ဥဂ္ဃေါသတိ` and
+        `ဥဂ္ဃေါသာပေတိ`, but `ဥဂ္ဃေါသေတိ` rowid 19700 has no `♦မြ` segment).
+  - **PM3 reuse rights:** `bksubhuti/Tipitaka-Pali-Projector` has no root
+    `LICENSE` file and its 2018 terms do not grant reuse rights for PM3 (and
+    99.74% of its hyphenated headwords already match `pndaza` primary display
+    headwords). `scripts/build-stage2.py` and `src/pali_myanmar_dicts/stage2.py`
+    now omit PM3 enrichment by default (`--include-pm3` / `--pm3` opt-in only),
+    keeping the Stage 2 release build 100% `winmetta-pd-decision`.
 
   **Source leads (2026-11-27):** [Dhamma Download's book index](https://www.dhammadownload.com/Others-eBookInMyanmar.htm)
   links a [U Hoke Sein dictionary PDF](https://dhammadownload.com/File-Library/other/U-HoteSein-Parli-Myanmar-Dictionary.pdf).

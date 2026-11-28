@@ -150,6 +150,12 @@ class Stage2Tests(unittest.TestCase):
             ("ဂွေ့သဘောၤဖြင့်", "ဂွေ့သင်္ဘောဖြင့်"),
             ("ဂင်္ဂၤါအကြေသို့", "ဂင်္ဂါအကြေသို့"),
             ("ခြသေ့ၤ", "ခြင်္သေ့"),
+            ("√ဥႌဟ်", "√ဦဟ်"),
+            ("ေဩာ်", "ဪ"),
+            ("ေ၀၀စန", "ဝေဝစန"),
+            ("ေ၀၀စနေ", "ဝေဝစနေ"),
+            ("ဟိဂုႍ", "ဟိင်္ဂုံ"),
+            ("အဂုၤလိဖောတနဉ္စ", "အင်္ဂုလိဖောတနဉ္စ"),
         ):
             repaired, details = repair_verified_tokens(original)
             self.assertEqual(repaired, expected)
@@ -325,5 +331,11 @@ class Stage2Tests(unittest.TestCase):
             self.assertIn("60775 entries", result.stdout)
             self.assertIn("11073 entries", result.stdout)
             self.assertIn("1894 entries", result.stdout)
-            self.assertIn("6 incomplete", result.stdout)
-            self.assertIn("24 incomplete", result.stdout)
+            self.assertIn(
+                "u-hoke-sein: 60775 entries, 58195 headwords, 3 incomplete, 0 PM3-enriched",
+                result.stdout,
+            )
+            self.assertIn(
+                "dhatuattha-pankone: 11073 entries, 9543 headwords, 3 incomplete, 0 PM3-enriched",
+                result.stdout,
+            )
